@@ -60,6 +60,13 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .shift b{font-family:var(--mono)}
 .ok{color:var(--ok)} .bad{color:var(--bad)}
 #endbtns{display:flex;gap:8px;flex-wrap:wrap}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent)}
+.opt{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;padding:8px 0;border-top:1px dashed var(--line)}
+.opt .k{font-family:var(--mono);font-weight:700;font-size:1.2rem;color:var(--accent)}
+.opt .best{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ok)}
+.opt.past{opacity:.45}
+.shift h3{margin:0;font-size:.95rem}
 .quick{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:12px 14px;border-top:1px solid var(--line);font-size:.85rem;color:var(--muted)}
 details.sim{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:.9rem}
 details.sim summary{cursor:pointer;color:var(--muted);font-weight:600}
@@ -134,7 +141,11 @@ footer{font-size:.78rem;color:var(--muted);line-height:1.5}
 
   <details class="sim" id="turnibox">
     <summary>Verifica turni</summary>
-    <div id="turno"></div>
+    <div class="controls">
+      <select id="tday" aria-label="Giorno del turno"></select>
+    </div>
+    <div class="seg" id="tsel" role="group" aria-label="Turno"></div>
+    <div id="turno"><p class="note">Scegli il turno qui sopra 👆</p></div>
   </details>
 
   <details class="sim" id="simbox">
@@ -237,14 +248,21 @@ function conDomani(fn, now, day){
 }
 
 // Prossimo turno: ultima Cumana che ti fa arrivare in tempo
-// Per ogni turno fatto coi mezzi: prossima volta, quando uscire di casa e quando torni
-function pianoTurno(tu, now, day){
-  const off = tu.inizio - 30 > now ? 0 : 1;            // se il turno è già iniziato, guardo domani
-  const dd = off ? addDays(day.y,day.mo,day.d,1) : day, rel = now - 1440*off, t = tipo(dd);
-  const cand = O.cumanaAndata.filter(c=>c.dep - C >= rel).map(c=>catenaAndata(c,t)).filter(x=>x.l2 && x.l2.lav <= tu.inizio);
-  const fineDay = tu.fine < tu.inizio ? addDays(dd.y,dd.mo,dd.d,1) : dd;
-  const rit = conDomani(ritorno, tu.fine, fineDay);
-  return {tu, domani:!!off, giorno:dd, k:cand.length ? cand[cand.length-1] : null, rit};
+// Proposte per un turno scelto, in un giorno scelto
+function proposteTurno(tu, dd){
+  const t = tipo(dd);
+  // andata: tutte le combinazioni che arrivano in tempo, le ultime 3 (la più comoda per prima)
+  const and = O.cumanaAndata.map(c=>catenaAndata(c,t)).filter(x=>x.l2 && x.l2.lav <= tu.inizio).slice(-3).reverse();
+  // ritorno: dalla fine del turno, prime 3 Cumane diverse raggiungibili
+  const fineDay = tu.fine < tu.inizio ? addDays(dd.y,dd.mo,dd.d,1) : dd, tf = tipo(fineDay);
+  const rit = [], seen = new Set(), l = l2Ritorno(tu.fine + W, tf);
+  if (l) for (const tr of l.treni){
+    const c = O.cumanaRitorno.find(c=>c.dep >= tr.ms + X); if (!c || seen.has(c.dep)) continue;
+    seen.add(c.dep);
+    const ult = l.treni.filter(x=>x.ms + X <= c.dep).pop();   // l'ultimo treno che fa ancora in tempo
+    rit.push({l2:ult, cum:c, casa:c.arr + C}); if (rit.length===3) break;
+  }
+  return {and, rit, fineGiornoDopo: fineDay !== dd};
 }
 
 // ---------------- Rendering ----------------
@@ -276,25 +294,31 @@ function renderAndata(now, day){
   $('gA').textContent = d<=0 ? 'adesso!' : d<60 ? `tra ${d} min` : (domani?'domani ':'') + hm(lv);
   $('gAs').textContent = `${domani?'Domani alle':'Alle'} ${hm(lv)}, per la Cumana delle ${hm(r.c.dep)}`;
 
-  renderTurni(now, day);
+  renderTurni(now);
 }
 
-function renderTurni(now, day){
-  const html = O.turni.filter(t=>!t.auto).map(tu => {
-    const p = pianoTurno(tu, now, day);
-    const quando = p.domani ? `domani (${DOW[p.giorno.dow]})` : 'oggi';
-    let a;
-    if (p.k){
-      const ant = tu.inizio - p.k.l2.lav;
-      a = `<span>🏠→🏢 esci di casa entro le <b>${hm(p.k.c.dep - C)}</b> · Cumana <b>${hm(p.k.c.dep)}</b> · Linea 2 <b>${hm(p.k.l2.dep)}</b></span>
-        <span class="ok">✅ al lavoro alle ${hm(p.k.l2.lav)}, ${ant} min prima</span>`;
-    } else a = `<span class="bad">⚠️ Nessuna combinazione sicura per arrivare in tempo.</span>`;
-    const r = p.rit.r;
-    const b = r ? `<span>🏢→🏠 fine turno alle ${hm(tu.fine)}: Linea 2 <b>${hm(r.l2.g)}</b> · Cumana <b>${hm(r.cum.dep)}</b> · a casa alle <b>${hm(r.casa)}</b>${p.rit.domani?' (il giorno dopo)':''}</span>`
-                : `<span class="bad">⚠️ Nessun treno utile a fine turno.</span>`;
-    return `<div class="shift"><strong>Turno di ${tu.nome} · ${hm(tu.inizio)}–${hm(tu.fine)} · ${quando}</strong>${a}${b}</div>`;
-  }).join('');
-  $('turno').innerHTML = html;
+let turnoSel = null, turnoDay = 0;
+function renderTurni(now){
+  const box = $('turno');
+  if (turnoSel == null){ box.innerHTML = '<p class="note">Scegli il turno qui sopra 👆</p>'; return; }
+  const t = romeToday(), dd = addDays(t.y,t.mo,t.d,turnoDay), tu = O.turni[turnoSel];
+  const oggi = turnoDay===0 && simDay===0, p = proposteTurno(tu, dd);
+  let h = `<div class="shift"><h3>Turno di ${tu.nome} · ${DOW[dd.dow]} ${dd.d}/${dd.mo} · ${hm(tu.inizio)}–${hm(tu.fine)}</h3>`;
+  if (tu.auto) h += `<span class="note">🚗 Di solito questo turno lo fai in auto. Ecco comunque i mezzi.</span>`;
+  h += `<span class="lbl">🏠→🏢 Andata</span>`;
+  if (!p.and.length) h += `<span class="bad">⚠️ Nessuna combinazione arriva in tempo.</span>`;
+  p.and.forEach((x,i) => {
+    const lv = x.c.dep - C, past = oggi && lv < now;
+    h += `<div class="opt${past?' past':''}"><span class="k">${hm(lv)}</span><span>esci di casa${i===0?' <span class="best">la più comoda</span>':''}${past?' · già passata':''}</span>
+      <span></span><span class="note">Cumana ${hm(x.c.dep)} · Linea 2 ${hm(x.l2.dep)} · al lavoro ${hm(x.l2.lav)} (${tu.inizio - x.l2.lav} min prima)</span></div>`;
+  });
+  h += `<span class="lbl" style="margin-top:8px">🏢→🏠 Ritorno · fine turno ${hm(tu.fine)}${p.fineGiornoDopo?' del giorno dopo':''}</span>`;
+  if (!p.rit.length) h += `<span class="bad">⚠️ Dopo le ${hm(tu.fine)} non ci sono più treni utili${tu.auto?' (per questo vai in auto 😉)':''}.</span>`;
+  p.rit.forEach((x,i) => {
+    h += `<div class="opt"><span class="k">${hm(x.casa)}</span><span>a casa${i===0?' <span class="best">la più veloce</span>':''}</span>
+      <span></span><span class="note">esci entro ${hm(x.l2.g - W)} · Linea 2 ${hm(x.l2.g)} · Cumana ${hm(x.cum.dep)}</span></div>`;
+  });
+  box.innerHTML = h + '</div>';
 }
 
 function renderRitorno(now, day){
@@ -364,6 +388,20 @@ O.turni.filter(t=>!t.auto).forEach(t => {
   b.addEventListener('click', () => { setSim(t.fine); $('simbox').open = true; });
   $('endbtns').appendChild(b);
 });
+
+// ---------------- Verifica turni ----------------
+(function(){
+  const t = romeToday(), sel = $('tday');
+  for (let i=0;i<7;i++){ const dd = addDays(t.y,t.mo,t.d,i); const o = document.createElement('option'); o.value = i;
+    o.textContent = (i===0?'Oggi':i===1?'Domani':DOW[dd.dow][0].toUpperCase()+DOW[dd.dow].slice(1)) + ` ${dd.d}/${dd.mo}`; sel.appendChild(o); }
+  sel.addEventListener('change', e => { turnoDay = +e.target.value; render(true); });
+  O.turni.forEach((tu,i) => {
+    const b = document.createElement('button'); b.type = 'button'; b.setAttribute('aria-pressed','false');
+    b.textContent = tu.nome[0].toUpperCase() + tu.nome.slice(1) + (tu.auto ? ' 🚗' : '');
+    b.addEventListener('click', () => { turnoSel = i; document.querySelectorAll('#tsel button').forEach((x,k)=>x.setAttribute('aria-pressed', k===i)); render(true); });
+    $('tsel').appendChild(b);
+  });
+})();
 
 // ---------------- Tab ----------------
 function showTab(name){
