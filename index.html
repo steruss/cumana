@@ -59,6 +59,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .shift{padding:12px 14px;border-top:1px solid var(--line);font-size:.92rem;display:flex;flex-direction:column;gap:4px}
 .shift b{font-family:var(--mono)}
 .ok{color:var(--ok)} .bad{color:var(--bad)}
+#endbtns{display:flex;gap:8px;flex-wrap:wrap}
 .quick{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:12px 14px;border-top:1px solid var(--line);font-size:.85rem;color:var(--muted)}
 details.sim{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:.9rem}
 details.sim summary{cursor:pointer;color:var(--muted);font-weight:600}
@@ -126,9 +127,7 @@ footer{font-size:.78rem;color:var(--muted);line-height:1.5}
       <div class="goal"><span class="lbl">A casa alle</span><span class="val" id="gR">--:--</span><span class="sub" id="gRs"></span></div>
     </div>
     <div class="quick">Fine turno:
-      <button type="button" class="endshift" data-m="420">07:00</button>
-      <button type="button" class="endshift" data-m="900">15:00</button>
-      <button type="button" class="endshift" data-m="1380">23:00</button>
+      <span id="endbtns"></span>
     </div>
   </section>
 
@@ -238,6 +237,7 @@ function prossimoTurno(now, day){
   for (let off=0; off<2; off++){
     const dd = off ? addDays(day.y,day.mo,day.d,1) : day, rel = now - 1440*off, t = tipo(dd);
     for (const tu of O.turni){
+      if (tu.auto) continue;               // turno fatto in auto
       if (tu.inizio - 30 <= rel) continue; // turno già iniziato (o quasi)
       const cand = O.cumanaAndata.filter(c=>c.dep - C >= rel).map(c=>catenaAndata(c,t)).filter(x=>x.l2 && x.l2.lav <= tu.inizio);
       if (cand.length) return {tu, k:cand[cand.length-1], domani:!!off, rel};
@@ -351,7 +351,12 @@ function fromInput(){
 ['input','change'].forEach(ev => $('t').addEventListener(ev, fromInput));
 document.querySelectorAll('.step').forEach(b => b.addEventListener('click', () => setSim(currentDay().now + Number(b.dataset.step))));
 $('now').addEventListener('click', () => { ignoreUntil = Date.now() + 800; $('t').blur(); setSim(null); });
-document.querySelectorAll('.endshift').forEach(b => b.addEventListener('click', () => { setSim(+b.dataset.m); $('simbox').open = true; }));
+// pulsanti "fine turno" solo per i turni fatti coi mezzi
+O.turni.filter(t=>!t.auto).forEach(t => {
+  const b = document.createElement('button'); b.type = 'button'; b.textContent = `${hm(t.fine)} (${t.nome})`;
+  b.addEventListener('click', () => { setSim(t.fine); $('simbox').open = true; });
+  $('endbtns').appendChild(b);
+});
 
 // ---------------- Tab ----------------
 function showTab(name){
@@ -368,7 +373,8 @@ showTab(start === 'ritorno' ? 'ritorno' : 'andata');
 // ---------------- Footer dai dati (si aggiorna da solo) ----------------
 $('foot').textContent = `Orari controllati il ${O.controllati}. Cumana: PDF EAV, un treno ogni 24 minuti (stesso orario tutti i giorni). `
   + `Linea 2: simulazioni Trenitalia; dove mancano, stima prudente. Margini: ${C} min casa↔La Trencia, ${X} min di cambio a Montesanto, `
-  + `${G} min Montesanto↔Garibaldi, ${W} min Garibaldi↔lavoro. Festivi infrasettimanali trattati come domenica.`;
+  + `${G} min Montesanto↔Garibaldi, ${W} min Garibaldi↔lavoro. Festivi infrasettimanali trattati come domenica. `
+  + (O.turni.some(t=>t.auto) ? `Turno di ${O.turni.filter(t=>t.auto).map(t=>t.nome).join(', ')} in auto 🚗: non lo considero.` : '');
 
 render(true);
 setInterval(render, 1000);
