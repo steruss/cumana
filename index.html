@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cumana Ste</title>
+<meta name="theme-color" content="#0b5cad">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+/* Layout: due tab (Andata / Ritorno), ognuno un tabellone stile stazione con i treni in alto e i riquadri "esci / arrivi" in fondo */
+:root{
+  --bg:#eef2f6; --panel:#ffffff; --ink:#14223a; --muted:#5b6a80; --line:#d5dde8;
+  --accent:#0b5cad; --on-accent:#ffffff; --amber:#b86e00; --ok:#1d7a46; --bad:#b3261e; --warn-bg:#fff4d6;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:ui-monospace,"Roboto Mono","SF Mono",Menlo,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0d1522; --panel:#152033; --ink:#e7edf6; --muted:#93a3ba; --line:#26354d;
+  --accent:#5aa6f0; --on-accent:#0d1522; --amber:#f2b33d; --ok:#5fd18f; --bad:#ff8a80; --warn-bg:#3a2e10; color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;
+  padding:max(12px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(32px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+.wrap{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px}
+h1{margin:0;font-weight:800;font-size:1.25rem;letter-spacing:-.01em;min-width:0}
+header .right{text-align:right;flex-shrink:0}
+.clock{font-family:var(--mono);font-weight:700;font-size:1.4rem;font-variant-numeric:tabular-nums;line-height:1}
+.day{color:var(--muted);font-size:.75rem}
+.day.sim{color:var(--amber);font-weight:700}
+.warn{background:var(--warn-bg);border:1px solid var(--amber);border-radius:8px;padding:10px 12px;font-size:.9rem}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+button{font:inherit;font-weight:600;padding:6px 12px;border-radius:6px;border:1px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.tabs button{border:0;border-radius:7px;padding:12px 8px;font-size:1rem;font-weight:800;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px}
+.tabs button small{font-weight:400;font-size:.75rem}
+.tabs button[aria-selected="true"]{background:var(--accent);color:var(--on-accent)}
+.board{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.board h2{margin:0;padding:10px 14px;font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;background:var(--accent);color:var(--on-accent)}
+.leg{padding:14px;display:flex;flex-direction:column;gap:6px;border-bottom:1px solid var(--line)}
+.route{font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.big{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.time{font-family:var(--mono);font-weight:700;font-size:2.4rem;font-variant-numeric:tabular-nums;line-height:1}
+.in{font-weight:600;color:var(--amber)}
+.in.soon{color:var(--ok)}
+.next{font-family:var(--mono);font-size:.95rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.note{font-size:.88rem;color:var(--muted)}
+.lost{font-size:.85rem;color:var(--bad)}
+.tag{font-size:.7rem;font-weight:700;border:1px solid var(--amber);color:var(--amber);border-radius:4px;padding:1px 6px;text-transform:uppercase;letter-spacing:.05em}
+.goals{display:grid;grid-template-columns:1fr 1fr;border-top:2px solid var(--accent)}
+.goal{padding:16px 14px;background:var(--bg);display:flex;flex-direction:column;gap:2px;min-width:0}
+.goal + .goal{border-left:1px solid var(--line)}
+.lbl{font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700}
+.val{font-family:var(--mono);font-weight:700;font-size:clamp(1.4rem,7vw,2.2rem);line-height:1.05;font-variant-numeric:tabular-nums;color:var(--accent);overflow-wrap:anywhere}
+.sub{font-size:.85rem;color:var(--muted)}
+.shift{padding:12px 14px;border-top:1px solid var(--line);font-size:.92rem;display:flex;flex-direction:column;gap:4px}
+.shift b{font-family:var(--mono)}
+.ok{color:var(--ok)} .bad{color:var(--bad)}
+.quick{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:12px 14px;border-top:1px solid var(--line);font-size:.85rem;color:var(--muted)}
+details.sim{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:.9rem}
+details.sim summary{cursor:pointer;color:var(--muted);font-weight:600}
+.controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.controls input,.controls select{font:inherit;font-family:var(--mono);padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink)}
+.live{display:block;text-align:center;padding:12px;border-radius:10px;border:1px solid var(--accent);color:var(--accent);font-weight:700;text-decoration:none}
+footer{font-size:.78rem;color:var(--muted);line-height:1.5}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>La Trencia ⇄ Garibaldi</h1>
+    <div class="right"><div class="clock" id="clock">--:--</div><div class="day" id="day"></div></div>
+  </header>
+
+  <div class="warn" id="scaduto" hidden></div>
+
+  <div class="tabs" role="tablist">
+    <button type="button" role="tab" id="tab-andata" data-tab="andata" aria-selected="true">➜ Andata<small>vado a lavoro</small></button>
+    <button type="button" role="tab" id="tab-ritorno" data-tab="ritorno" aria-selected="false">⌂ Ritorno<small>torno a casa</small></button>
+  </div>
+
+  <!-- ===================== ANDATA ===================== -->
+  <section class="board" id="andata" role="tabpanel">
+    <h2>Andata · vado a lavoro</h2>
+    <div class="leg">
+      <div class="route">Cumana · La Trencia → Montesanto</div>
+      <div class="big"><span class="time" id="a1t">--:--</span><span class="in" id="a1i"></span></div>
+      <div class="note" id="a1n"></div>
+      <div class="lost" id="a1l"></div>
+      <div class="next" id="a1x"></div>
+    </div>
+    <div class="leg">
+      <div class="route">Linea 2 · Montesanto → Garibaldi <span class="tag" id="a2tag">stima</span></div>
+      <div class="big"><span class="time" id="a2t">--:--</span><span class="in" id="a2i"></span></div>
+      <div class="note" id="a2n"></div>
+      <div class="next" id="a2x"></div>
+    </div>
+    <div class="goals">
+      <div class="goal"><span class="lbl">Esci di casa</span><span class="val" id="gA">--</span><span class="sub" id="gAs"></span></div>
+      <div class="goal"><span class="lbl">Al lavoro alle</span><span class="val" id="gW">--:--</span><span class="sub" id="gWs"></span></div>
+    </div>
+    <div class="shift" id="turno"></div>
+  </section>
+
+  <!-- ===================== RITORNO ===================== -->
+  <section class="board" id="ritorno" role="tabpanel" hidden>
+    <h2>Ritorno · torno a casa</h2>
+    <div class="leg">
+      <div class="route">Linea 2 · Garibaldi → Montesanto <span class="tag" id="r2tag">stima</span></div>
+      <div class="big"><span class="time" id="r2t">--:--</span><span class="in" id="r2i"></span></div>
+      <div class="note" id="r2n"></div>
+      <div class="next" id="r2x"></div>
+    </div>
+    <div class="leg">
+      <div class="route">Cumana · Montesanto → La Trencia</div>
+      <div class="big"><span class="time" id="r1t">--:--</span><span class="in" id="r1i"></span></div>
+      <div class="note" id="r1n"></div>
+      <div class="next" id="r1x"></div>
+    </div>
+    <div class="goals">
+      <div class="goal"><span class="lbl">Esci dal lavoro</span><span class="val" id="gL">--</span><span class="sub" id="gLs"></span></div>
+      <div class="goal"><span class="lbl">A casa alle</span><span class="val" id="gR">--:--</span><span class="sub" id="gRs"></span></div>
+    </div>
+    <div class="quick">Fine turno:
+      <button type="button" class="endshift" data-m="420">07:00</button>
+      <button type="button" class="endshift" data-m="900">15:00</button>
+      <button type="button" class="endshift" data-m="1380">23:00</button>
+    </div>
+  </section>
+
+  <a class="live" href="http://www.viaggiatreno.it/infomobilitamobile/pages/cercaTreno/cercaTreno.jsp" target="_blank" rel="noopener">Controlla ritardi e scioperi ↗</a>
+
+  <details class="sim" id="simbox">
+    <summary>Simula giorno e orario</summary>
+    <div class="controls">
+      <select id="d" aria-label="Giorno"></select>
+      <input type="time" id="t" step="60" aria-label="Orario">
+    </div>
+    <div class="controls">
+      <button type="button" class="step" data-step="-30">−30′</button>
+      <button type="button" class="step" data-step="-10">−10′</button>
+      <button type="button" class="step" data-step="10">+10′</button>
+      <button type="button" class="step" data-step="30">+30′</button>
+      <button type="button" id="now">Adesso</button>
+    </div>
+  </details>
+
+  <footer id="foot"></footer>
+</div>
+
+<script src="data.js"></script>
+<script>
+"use strict";
+const O = window.ORARI;
+const $ = id => document.getElementById(id);
+const hm = m => { m = ((m % 1440) + 1440) % 1440; return String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0'); };
+const DOW = ['domenica','lunedì','martedì','mercoledì','giovedì','venerdì','sabato'];
+const MESI = ['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];
+const C = O.casaTrencia, X = O.cambioMontesanto, G = O.montesantoGaribaldi, W = O.garibaldiLavoro;
+
+// ---------------- Date e festivi ----------------
+function romeToday(){
+  const p = new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Rome',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).formatToParts(new Date());
+  const g = t => +p.find(x=>x.type===t).value;
+  return {y:g('year'), mo:g('month'), d:g('day'), h:g('hour')%24, mi:g('minute'), s:g('second')};
+}
+function addDays(y,mo,d,n){ const t = new Date(Date.UTC(y,mo-1,d+n)); return {y:t.getUTCFullYear(), mo:t.getUTCMonth()+1, d:t.getUTCDate(), dow:t.getUTCDay()}; }
+function pasqua(y){ // algoritmo di Gauss/Meeus
+  const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),
+  h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),
+  mo=Math.floor((h+l-7*m+114)/31),day=((h+l-7*m+114)%31)+1; return {mo,d:day};
+}
+function festivo(day){
+  const k = String(day.mo).padStart(2,'0')+'-'+String(day.d).padStart(2,'0');
+  if (['01-01','01-06','04-25','05-01','06-02','08-15','11-01','12-08','12-25','12-26'].includes(k)) return true;
+  const p = pasqua(day.y), pm = addDays(day.y,p.mo,p.d,1); // Pasquetta
+  return day.mo===pm.mo && day.d===pm.d;
+}
+function tipo(day){ if (day.dow===0 || festivo(day)) return 'festivo'; if (day.dow===6) return 'sabato'; return 'feriale'; }
+const TIPO_LBL = {feriale:'feriale', sabato:'sabato', festivo:'festivo'};
+
+// ---------------- Calcoli viaggio ----------------
+// Linea 2 andata: primo treno da Montesanto dopo "pronto" (in minuti)
+function l2Andata(pronto, t){
+  const L = O.linea2[t].andata, S = O.linea2Servizio;
+  if (L){ const all = L.filter(x=>x[0]>=pronto).map(x=>({dep:x[0], lav:x[0]+G+W})); return all.length ? {treni:all, stima:false} : null; }
+  if (pronto > S.ultimaMontesanto) return null;
+  const hw = O.frequenzaStima[t], dep = Math.max(pronto, S.primaMontesanto) + hw; // attesa peggiore
+  return {treni:[{dep, lav:dep+G+W}], stima:true, hw};
+}
+// Una catena completa partendo da una certa Cumana
+function catenaAndata(c, t){ const l = l2Andata(c.arr + X, t); return l ? {c, l2:l.treni[0], stima:l.stima, hw:l.hw, altri:l.treni.slice(1,4)} : {c, l2:null}; }
+
+function andata(now, day){
+  const t = tipo(day);
+  const ok = O.cumanaAndata.filter(c=>c.dep - C >= now);
+  if (!ok.length) return null;
+  const persa = O.cumanaAndata.filter(c=>c.dep >= now && c.dep - C < now);
+  return Object.assign(catenaAndata(ok[0], t), {persa:persa[0], poi:ok.slice(1,4), tipo:t});
+}
+
+// Linea 2 ritorno: treni da Garibaldi che posso prendere arrivando al binario a "pronto"
+function l2Ritorno(pronto, t){
+  const L = O.linea2[t].ritorno, S = O.linea2Servizio;
+  if (L){
+    const all = L.map(x=>({g:x[0]+x[1]-G, ms:x[0]+x[1]})).filter(x=>x.g>=pronto);
+    return all.length ? {treni:all, stima:false} : null;
+  }
+  if (pronto > S.ultimaGaribaldi) return null;
+  const hw = O.frequenzaStima[t], g = Math.max(pronto, S.primaGaribaldi);
+  return {treni:[{g, ms:g+hw+G}], stima:true, hw};
+}
+function ritorno(now, day){
+  const t = tipo(day);
+  const l = l2Ritorno(now + W, t); if (!l) return null;
+  const b = O.cumanaRitorno.filter(c=>c.dep >= l.treni[0].ms + X); if (!b.length) return null;
+  const cum = b[0];
+  // ultimo momento utile per uscire dal lavoro e prendere comunque quella Cumana
+  let esci;
+  if (!l.stima){ const ult = l.treni.filter(x=>x.ms + X <= cum.dep).pop(); esci = ult.g - W; }
+  else esci = cum.dep - X - G - l.hw - W;
+  return {l2:l.treni[0], altri:l.treni.slice(1,4), stima:l.stima, hw:l.hw, cum, poi:b.slice(1,4), esci:Math.max(esci, now), casa:cum.arr + C, tipo:t};
+}
+
+// Prova oggi, se non c'è niente passa a domani
+function conDomani(fn, now, day){
+  const r = fn(now, day); if (r) return {r, now, domani:false};
+  const dd = addDays(day.y, day.mo, day.d, 1);
+  return {r: fn(now - 1440, dd), now: now - 1440, domani:true};
+}
+
+// Prossimo turno: ultima Cumana che ti fa arrivare in tempo
+function prossimoTurno(now, day){
+  for (let off=0; off<2; off++){
+    const dd = off ? addDays(day.y,day.mo,day.d,1) : day, rel = now - 1440*off, t = tipo(dd);
+    for (const tu of O.turni){
+      if (tu.inizio - 30 <= rel) continue; // turno già iniziato (o quasi)
+      const cand = O.cumanaAndata.filter(c=>c.dep - C >= rel).map(c=>catenaAndata(c,t)).filter(x=>x.l2 && x.l2.lav <= tu.inizio);
+      if (cand.length) return {tu, k:cand[cand.length-1], domani:!!off, rel};
+      return {tu, k:null, domani:!!off};
+    }
+  }
+  return null;
+}
+
+// ---------------- Rendering ----------------
+function txtTra(diff){ return diff<=0 ? 'adesso!' : diff<60 ? `tra ${diff} min` : `tra ${Math.floor(diff/60)} h ${diff%60} min`; }
+function setIn(el, diff){ el.textContent = txtTra(diff); el.classList.toggle('soon', diff<=5); }
+const D = s => s ? 'domani ' : '';
+
+function renderAndata(now, day){
+  const {r, now:n, domani} = conDomani(andata, now, day);
+  if (!r){ ['a1t','a2t','gW'].forEach(i=>$(i).textContent='--:--'); return; }
+  $('a1t').textContent = hm(r.c.dep); setIn($('a1i'), r.c.dep - n);
+  $('a1n').textContent = `Arrivo a Montesanto alle ${hm(r.c.arr)}` + (domani ? ' · 🌙 prima Cumana di domani' : '');
+  $('a1l').textContent = r.persa ? `Quella delle ${hm(r.persa.dep)} ormai è persa 🏃` : '';
+  $('a1x').textContent = r.poi.length ? 'Poi: ' + r.poi.map(x=>hm(x.dep)).join(' · ') : '';
+  $('a2tag').hidden = !r.stima;
+  if (r.l2){
+    $('a2t').textContent = (r.stima?'~':'') + hm(r.l2.dep); setIn($('a2i'), r.l2.dep - n);
+    $('a2n').textContent = r.stima
+      ? `Orario ${TIPO_LBL[r.tipo]} non disponibile: conto un treno ogni ${r.hw} min con l'attesa peggiore.`
+      : `A Garibaldi alle ${hm(r.l2.dep+G)}, al lavoro verso le ${hm(r.l2.lav)}`;
+    $('a2x').textContent = r.altri && r.altri.length ? 'Poi: ' + r.altri.map(x=>hm(x.dep)).join(' · ') : '';
+    $('gW').textContent = hm(r.l2.lav);
+    $('gWs').textContent = `${D(domani)}con la Linea 2 delle ${hm(r.l2.dep)} e ${W} min a piedi`;
+  } else {
+    $('a2t').textContent='--:--'; $('a2i').textContent=''; $('a2n').textContent='Linea 2 già chiusa a quell\'ora.'; $('a2x').textContent='';
+    $('gW').textContent='--:--'; $('gWs').textContent='';
+  }
+  const lv = r.c.dep - C, d = lv - n;
+  $('gA').textContent = d<=0 ? 'adesso!' : d<60 ? `tra ${d} min` : (domani?'domani ':'') + hm(lv);
+  $('gAs').textContent = `${domani?'Domani alle':'Alle'} ${hm(lv)}, per la Cumana delle ${hm(r.c.dep)}`;
+
+  // Turno
+  const pt = prossimoTurno(now, day), box = $('turno');
+  if (!pt){ box.innerHTML=''; return; }
+  const nome = `turno di ${pt.tu.nome} (${hm(pt.tu.inizio)})`;
+  if (pt.k){
+    const anticipo = pt.tu.inizio - pt.k.l2.lav;
+    box.innerHTML = `<span>Per il ${nome}${pt.domani?' di domani':''}:</span>
+      <span>esci di casa entro le <b>${hm(pt.k.c.dep - C)}</b> · Cumana <b>${hm(pt.k.c.dep)}</b> · Linea 2 <b>${hm(pt.k.l2.dep)}</b></span>
+      <span class="ok">✅ al lavoro alle ${hm(pt.k.l2.lav)}, ${anticipo} min prima${pt.k.stima?' (stima)':''}</span>`;
+  } else {
+    box.innerHTML = `<span class="bad">⚠️ Per il ${nome}${pt.domani?' di domani':''} non c'è più una combinazione sicura con Cumana e Linea 2.</span>`;
+  }
+}
+
+function renderRitorno(now, day){
+  const {r, now:n, domani} = conDomani(ritorno, now, day);
+  if (!r){ ['r1t','r2t','gR'].forEach(i=>$(i).textContent='--:--'); return; }
+  $('r2tag').hidden = !r.stima;
+  $('r2t').textContent = (r.stima?'~':'') + hm(r.l2.g); setIn($('r2i'), r.l2.g - n);
+  $('r2n').textContent = (domani ? '🌙 Stasera non ci sono più coincidenze: ecco la prima di domani. ' : `Uscendo dal lavoro adesso (${W} min a piedi). `)
+    + (r.stima ? `Orario ${TIPO_LBL[r.tipo]} non disponibile: conto l'attesa peggiore (un treno ogni ${r.hw} min).` : `Arrivo a Montesanto alle ${hm(r.l2.ms)}`);
+  $('r2x').textContent = r.altri.length ? 'Poi: ' + r.altri.map(x=>hm(x.g)).join(' · ') : '';
+  $('r1t').textContent = hm(r.cum.dep); setIn($('r1i'), r.cum.dep - n);
+  $('r1n').textContent = `Arrivo a La Trencia alle ${hm(r.cum.arr)}`;
+  $('r1x').textContent = r.poi.length ? 'Poi: ' + r.poi.map(x=>hm(x.dep)).join(' · ') : '';
+  const dx = r.esci - n;
+  $('gL').textContent = dx<=0 ? 'adesso!' : dx<60 ? `tra ${dx} min` : (domani?'domani ':'') + hm(r.esci);
+  $('gLs').textContent = `${domani?'Domani e':'E'}ntro le ${hm(r.esci)}, per la Cumana delle ${hm(r.cum.dep)}`;
+  $('gR').textContent = hm(r.casa);
+  $('gRs').textContent = `${D(domani)}con ${C} min a piedi da La Trencia`;
+}
+
+// ---------------- Stato e simulazione ----------------
+let simTime = null, simDay = 0, lastKey = '';
+function currentDay(){
+  const t = romeToday(), base = addDays(t.y, t.mo, t.d, simDay);
+  return {t, day:base, now: simTime ?? (t.h*60 + t.mi)};
+}
+function render(force){
+  const {t, day, now} = currentDay();
+  const sim = simTime!=null || simDay!==0;
+  $('clock').textContent = sim ? hm(now) : `${hm(now)}:${String(t.s).padStart(2,'0')}`;
+  $('day').textContent = `${DOW[day.dow]} ${day.d} ${MESI[day.mo-1]}` + (tipo(day)==='festivo' && day.dow!==0 ? ' · festivo' : '') + (sim ? ' · simulato' : '');
+  $('day').classList.toggle('sim', sim);
+  const key = `${day.y}-${day.mo}-${day.d}-${now}`;
+  if (!force && key === lastKey) return;   // i treni si ricalcolano solo quando cambia il minuto
+  lastKey = key;
+  renderAndata(now, day);
+  renderRitorno(now, day);
+  const sc = O.scadenza.split('-').map(Number), oggi = t.y*10000 + t.mo*100 + t.d;
+  const sca = $('scaduto'); sca.hidden = oggi < sc[0]*10000 + sc[1]*100 + sc[2];
+  sca.textContent = `⚠️ Gli orari sono stati controllati il ${O.controllati} e potrebbero essere cambiati. Rifai le simulazioni su Lefrecce e aggiorna data.js.`;
+}
+
+function setSim(m){
+  if (m == null){ simTime = null; simDay = 0; $('t').value = ''; $('d').value = '0'; }
+  else { simTime = ((m % 1440) + 1440) % 1440; $('t').value = hm(simTime); }
+  render(true);
+}
+// selettore giorno: oggi + 6 giorni
+(function(){
+  const t = romeToday(), sel = $('d');
+  for (let i=0;i<7;i++){ const dd = addDays(t.y,t.mo,t.d,i); const o = document.createElement('option'); o.value = i;
+    o.textContent = (i===0?'Oggi':i===1?'Domani':DOW[dd.dow][0].toUpperCase()+DOW[dd.dow].slice(1)) + ` ${dd.d}/${dd.mo}`; sel.appendChild(o); }
+})();
+$('d').addEventListener('change', e => { simDay = +e.target.value; render(true); });
+let ignoreUntil = 0;
+function fromInput(){
+  if (Date.now() < ignoreUntil) return;
+  const v = $('t').value; if (!v) return;
+  const [h,m] = v.split(':').map(Number); if (!isNaN(h) && !isNaN(m)) setSim(h*60+m);
+}
+['input','change'].forEach(ev => $('t').addEventListener(ev, fromInput));
+document.querySelectorAll('.step').forEach(b => b.addEventListener('click', () => setSim(currentDay().now + Number(b.dataset.step))));
+$('now').addEventListener('click', () => { ignoreUntil = Date.now() + 800; $('t').blur(); setSim(null); });
+document.querySelectorAll('.endshift').forEach(b => b.addEventListener('click', () => { setSim(+b.dataset.m); $('simbox').open = true; }));
+
+// ---------------- Tab ----------------
+function showTab(name){
+  ['andata','ritorno'].forEach(n => { $(n).hidden = n !== name; $('tab-'+n).setAttribute('aria-selected', n === name); });
+  try { localStorage.setItem('tab', name); } catch(e){}
+  if (location.hash !== '#'+name) history.replaceState(null, '', '#'+name);
+}
+document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
+window.addEventListener('hashchange', () => { const h = location.hash.slice(1); if (h==='andata' || h==='ritorno') showTab(h); });
+let start = location.hash.slice(1);
+if (start!=='andata' && start!=='ritorno'){ try { start = localStorage.getItem('tab'); } catch(e){} }
+showTab(start === 'ritorno' ? 'ritorno' : 'andata');
+
+// ---------------- Footer dai dati (si aggiorna da solo) ----------------
+$('foot').textContent = `Orari controllati il ${O.controllati}. Cumana: PDF EAV, un treno ogni 24 minuti (stesso orario tutti i giorni). `
+  + `Linea 2: simulazioni Trenitalia; dove mancano, stima prudente. Margini: ${C} min casa↔La Trencia, ${X} min di cambio a Montesanto, `
+  + `${G} min Montesanto↔Garibaldi, ${W} min Garibaldi↔lavoro. Festivi infrasettimanali trattati come domenica.`;
+
+render(true);
+setInterval(render, 1000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) render(true); });
+
+// ---------------- Offline ----------------
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
