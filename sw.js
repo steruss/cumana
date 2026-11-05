@@ -1,7 +1,7 @@
 // Memoria offline dell'app.
-// A ogni modifica aumenta la versione qui sotto E in index.html (VERSIONE), es. 2.1 -> 2.2.
-const CACHE = 'cumana-2.5';
-const FILES = ['./', './index.html', './data.js', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
+// A ogni modifica aumenta la versione qui sotto E in app.js (VERSIONE), es. 2.1 -> 2.2.
+const CACHE = 'cumana-2.6';
+const FILES = ['./', './index.html', './data.js', './app.js', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 const ATTESA_RETE = 3000;   // ms: se internet non risponde entro 3 secondi uso la copia salvata
 
 // Installazione: scarico i file SEMPRE freschi (cache:'reload' salta la memoria di Chrome)

@@ -1,0 +1,11 @@
+{
+  "name": "cumana-ste",
+  "private": true,
+  "description": "Test automatici dell'app Cumana Ste",
+  "scripts": {
+    "test": "node --test --test-force-exit --test-timeout=20000 tests/*.test.js"
+  },
+  "devDependencies": {
+    "jsdom": "24.1.3"
+  }
+}
