@@ -1,0 +1,29 @@
+name: Ritardi EAV
+on:
+  workflow_dispatch:          # il pulsante "Aggiorna ritardi" nell'app
+  schedule:
+    - cron: "*/10 4-22 * * *" # ogni 10 minuti dalle 5 alle 23 (ora italiana invernale)
+  push:
+    branches: [main]
+    paths: [".github/workflows/live.yml", "scripts/live.py"]
+permissions:
+  contents: write
+concurrency:
+  group: live
+  cancel-in-progress: false
+jobs:
+  leggi:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Leggi i tabelloni EAV
+        run: python3 scripts/live.py > /tmp/live.json && cat /tmp/live.json | head -5
+      - name: Salva sul ramo "live" (un solo commit, sovrascritto ogni volta)
+        run: |
+          mkdir /tmp/out && cp /tmp/live.json /tmp/out/live.json && cd /tmp/out
+          git init -q -b live
+          git -c user.name="ritardi-bot" -c user.email="actions@users.noreply.github.com" commit -q --allow-empty -m "ritardi" 
+          git add live.json
+          git -c user.name="ritardi-bot" -c user.email="actions@users.noreply.github.com" commit -q -m "ritardi $(date -u +%H:%M)"
+          git push -f -q "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" live
