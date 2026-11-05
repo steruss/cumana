@@ -20,9 +20,11 @@ window.ORARI = {
 
   // ---- Circumflegrea (PDF EAV) - stesso orario tutti i giorni ----
   // La Trencia -> Montesanto: dalle 6:00 ogni 24 min fino alle 22:00, 15 min di viaggio
-  cumanaAndata: Array.from({length:41}, (_,k) => ({dep:360+24*k, arr:375+24*k})),
+  // n = numero del treno (dal PDF EAV: 06:00 è il 50545, poi 5059, 5063… di 4 in 4)
+  cumanaAndata: Array.from({length:41}, (_,k) => ({dep:360+24*k, arr:375+24*k, n: k===0 ? 50545 : 5059+4*(k-1)})),
   // Montesanto -> La Trencia: 5:02, poi dalle 5:36 ogni 24 min fino alle 21:36
-  cumanaRitorno: [{dep:302,arr:315}].concat(Array.from({length:41}, (_,k) => ({dep:336+24*k, arr:351+24*k}))),
+  // n = numero del treno (05:02 è il 50502, dalle 05:36 5056, 5060… di 4 in 4; l'ultima delle 21:36 è il 52136)
+  cumanaRitorno: [{dep:302,arr:315,n:50502}].concat(Array.from({length:41}, (_,k) => ({dep:336+24*k, arr:351+24*k, n: k===40 ? 52136 : 5056+4*k}))),
 
   // ---- Linea 2 (simulazioni Lefrecce) ----
   // Andata: [partenza da Montesanto, minuti fino a Napoli Centrale]

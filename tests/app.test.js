@@ -125,6 +125,24 @@ test('All\'apertura chiede da solo i ritardi se sono vecchi', async () => {
   assert.equal(senza.w.document.getElementById('tokbox').hidden, true);
 });
 
+test('Ritardi abbinati per numero treno: un treno diverso alla stessa ora non conta', async () => {
+  const a = await apri('2026-11-05T07:00:00Z', { live: liveFinto({ trencia_p: [{ treno: '9999', dest: 'MONTESANTO', ora: '08:24', rit: 0, info: 'SOPPRESSO' }] }) });
+  assert.equal(a.testo('a1t'), '08:24');               // il 9999 non è la nostra Cumana delle 08:24 (che è la 5079)
+  assert.doesNotMatch(a.testo('a1l'), /SOPPRESSA/);
+});
+
+test('Numeri dei treni Cumana come nel PDF EAV', () => {
+  const w = {}; new Function('window', DATA)(w);
+  const O = w.ORARI, trova = (L, m) => L.find(c => c.dep === m).n;
+  assert.equal(trova(O.cumanaAndata, 360), 50545);       // La Trencia 06:00
+  assert.equal(trova(O.cumanaAndata, 504), 5079);        // La Trencia 08:24
+  assert.equal(trova(O.cumanaAndata, 1320), 5215);       // La Trencia 22:00
+  assert.equal(trova(O.cumanaRitorno, 302), 50502);      // Montesanto 05:02
+  assert.equal(trova(O.cumanaRitorno, 504), 5084);       // Montesanto 08:24
+  assert.equal(trova(O.cumanaRitorno, 1272), 5212);      // Montesanto 21:12
+  assert.equal(trova(O.cumanaRitorno, 1296), 52136);     // Montesanto 21:36, l'ultima
+});
+
 // ---------------- IN CORSO ----------------
 test('Andata in corso 08:35: sulla Cumana delle 08:24 prendi la Linea 2 delle 08:47', async () => {
   const a = await apri('2026-11-05T07:35:00Z', { hash: '#andata-corso' });

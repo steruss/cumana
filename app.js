@@ -2,7 +2,7 @@
 // Gli orari stanno in data.js; la grafica in index.html.
 "use strict";
 // Versione dell'app: si aumenta a ogni modifica (e va uguale in sw.js)
-const VERSIONE = '2.8';
+const VERSIONE = '2.9';
 const O = window.ORARI;
 const $ = id => document.getElementById(id);
 const hm = m => { m = ((m % 1440) + 1440) % 1440; return String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0'); };
@@ -198,9 +198,18 @@ function liveEta(){ return LIVE ? Math.round((Date.now() - Date.parse(LIVE.agg))
 function liveOk(){ return LIVE && LIVE.ok && liveEta() <= LIVE_MAX_ETA && simTime == null && simDay === 0; }
 const SOPP = /soppress|cancellat|non effettuat/i;
 function soppressa(lista, m){ const r = liveRit(lista, m); return !!(r && SOPP.test(r.info || '')); }
+// Cerca il ritardo di una Cumana nel tabellone EAV usando il NUMERO del treno (non l'orario):
+// "m" è l'orario in minuti della Cumana nei nostri dati, da cui ricavo il suo numero
+const PER_NUMERO = {
+  trencia_p:    m => O.cumanaAndata.find(c => c.dep === m),    // partenze da La Trencia
+  montesanto_a: m => O.cumanaAndata.find(c => c.arr === m),    // arrivi a Montesanto
+  montesanto_p: m => O.cumanaRitorno.find(c => c.dep === m)    // partenze da Montesanto
+};
 function liveRit(lista, m){
   if (!liveOk() || !LIVE[lista]) return null;
-  return LIVE[lista].find(x => x.ora === hm(m)) || null;
+  const c = PER_NUMERO[lista] && PER_NUMERO[lista](m);
+  if (!c || !c.n) return null;
+  return LIVE[lista].find(x => x.treno === String(c.n)) || null;
 }
 function badge(el, lr){
   el.parentNode.querySelectorAll('.rit').forEach(x=>x.remove());
