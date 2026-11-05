@@ -243,7 +243,10 @@ footer{font-size:.78rem;color:var(--muted);line-height:1.5}
     </div>
   </details>
 
-  <footer id="foot"></footer>
+  <details class="sim" id="infobox">
+    <summary>Info</summary>
+    <footer id="foot"></footer>
+  </details>
   <details class="sim" id="turnibox">
     <summary>Verifica turni</summary>
     <div class="controls">
@@ -259,7 +262,7 @@ footer{font-size:.78rem;color:var(--muted);line-height:1.5}
 <script>
 "use strict";
 // Versione dell'app: si aumenta a ogni modifica (e va uguale in sw.js)
-const VERSIONE = '2.2';
+const VERSIONE = '2.3';
 const O = window.ORARI;
 const $ = id => document.getElementById(id);
 const hm = m => { m = ((m % 1440) + 1440) % 1440; return String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0'); };
