@@ -1,6 +1,6 @@
 // Funziona offline: tiene in memoria i file della pagina.
-// Quando modifichi data.js o index.html, cambia il numero qui sotto (v1 -> v2) per forzare l'aggiornamento.
-const CACHE = 'cumana-v16';
+// Quando modifichi data.js o index.html, cambia la versione qui sotto e in index.html (2.0 -> 2.1) per forzare l'aggiornamento.
+const CACHE = 'cumana-2.0';   // stessa versione di index.html
 const FILES = ['./', './index.html', './data.js', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES))); self.skipWaiting(); });
 self.addEventListener('activate', e => {

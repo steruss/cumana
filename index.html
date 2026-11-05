@@ -103,6 +103,7 @@ details.sim summary{cursor:pointer;color:var(--muted);font-weight:600}
 .livebtn{align-self:flex-start;margin-top:4px;padding:6px 10px;border-radius:6px;border:1px solid var(--amber);color:var(--amber);font-size:.85rem;font-weight:700;text-decoration:none}
 .live small{display:block;font-weight:400;font-size:.75rem;color:var(--muted)}
 .live{display:block;text-align:center;padding:12px;border-radius:10px;border:1px solid var(--accent);color:var(--accent);font-weight:700;text-decoration:none}
+.ver{font-size:.7rem;color:var(--muted);text-align:center;opacity:.7}
 footer{font-size:.78rem;color:var(--muted);line-height:1.5}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -250,11 +251,14 @@ footer{font-size:.78rem;color:var(--muted);line-height:1.5}
   </details>
 
   <footer id="foot"></footer>
+  <div class="ver" id="ver"></div>
 </div>
 
 <script src="data.js"></script>
 <script>
 "use strict";
+// Versione dell'app: si aumenta a ogni modifica (e va uguale in sw.js)
+const VERSIONE = '2.0';
 const O = window.ORARI;
 const $ = id => document.getElementById(id);
 const hm = m => { m = ((m % 1440) + 1440) % 1440; return String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0'); };
@@ -742,6 +746,8 @@ caricaLive();
 setInterval(() => { if (!document.hidden) caricaLive(); }, 120000);       // ogni 2 minuti
 document.addEventListener('visibilitychange', () => { if (!document.hidden) caricaLive(); });
 setInterval(() => liveStato(), 30000);
+
+$('ver').textContent = `Versione ${VERSIONE}`;
 
 // ---------------- Offline ----------------
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
