@@ -2,7 +2,7 @@
 // Gli orari stanno in data.js; la grafica in index.html.
 "use strict";
 // Versione dell'app: si aumenta a ogni modifica (e va uguale in sw.js)
-const VERSIONE = '2.10';
+const VERSIONE = '2.11';
 const O = window.ORARI;
 const $ = id => document.getElementById(id);
 const hm = m => { m = ((m % 1440) + 1440) % 1440; return String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0'); };
@@ -360,6 +360,17 @@ function renderCorso(now, day){
   const t = tipo(day);
 
   // ===== ANDATA IN CORSO =====
+  // 0) Sono a La Trencia: prossima Cumana da adesso (niente camminata da casa)
+  const cT = O.cumanaAndata.filter(c => c.dep >= now && !soppressa('trencia_p', c.dep));
+  if (cT.length){
+    const c = cT[0], lr = liveRit('trencia_p', c.dep), rit = lr ? lr.rit : 0;
+    const k = catenaAndata({dep:c.dep, arr:c.arr + rit}, t);
+    $('acT').innerHTML = `<div class="row"><span>Prossima Cumana</span><span class="tt">${hm(c.dep)}</span>${ritTxt(lr)}<span>${txtTra(c.dep + rit - now)}</span></div>
+      <span>Arrivo a Montesanto alle <b>${hm(c.arr + rit)}</b></span>` + (k.l2
+      ? `<span>Prendi la Linea 2 delle <b>${hm(k.l2.dep)}</b> · al lavoro alle <b>${hm(k.l2.lav)}</b></span>` : '')
+      + (cT[1] ? `<span class="soft">Poi: ${cT.slice(1,4).map(x=>hm(x.dep)).join(' · ')}</span>` : '');
+  } else $('acT').innerHTML = nessuno('Niente più Cumane da La Trencia oggi: la prima di domani è alle 06:00.');
+
   // 1) Sulla Cumana: partite da La Trencia negli ultimi 40 minuti
   const cA = O.cumanaAndata.filter(c => c.dep <= now && c.dep >= now - 40).reverse()
     .map(c => ({k:c.dep, lbl:hm(c.dep), c}));
@@ -392,6 +403,23 @@ function renderCorso(now, day){
     : nessuno('Nessuna Linea 2 partita da Montesanto negli ultimi 15 minuti.');
 
   // ===== USCITA IN CORSO =====
+  // 0) Sono a Garibaldi: prossima Linea 2 da adesso (sono già sul binario, niente camminata dall'ufficio)
+  const lg = l2Ritorno(now, t);
+  if (lg){
+    const p = lg.treni[0];
+    const cs = O.cumanaRitorno.filter(c => c.dep >= p.ms + X && !soppressa('montesanto_p', c.dep));
+    let h = `<div class="row"><span>Prossima Linea 2</span><span class="tt">${(lg.stima?'~':'') + hm(p.g)}</span><span>${txtTra(p.g - now)}</span></div>
+      <span>Arrivo a Montesanto alle <b>${hm(p.ms)}</b></span>`;
+    if (cs.length){
+      const lr = liveRit('montesanto_p', cs[0].dep), rit = lr ? lr.rit : 0;
+      h += `<span>Prendi la Cumana delle <b>${hm(cs[0].dep)}</b>${ritTxt(lr)} · a casa alle <b>${hm(cs[0].arr + rit + C)}</b></span>`;
+      const v = lg.stima ? null : voloCumana(p.ms, cs[0].dep);
+      if (v) h += `<span class="volo">${voloTxt(v, 'Cumana', `a casa ${hm(v.casa)}`)}</span>`;
+    } else h += nessuno('Nessuna Cumana utile dopo questa Linea 2.');
+    if (lg.treni.length > 1) h += `<span class="soft">Poi: ${lg.treni.slice(1,4).map(x=>hm(x.g)).join(' · ')}</span>`;
+    $('rcG').innerHTML = h + vtBtn(p.n);
+  } else $('rcG').innerHTML = nessuno('Linea 2 chiusa a quest\'ora.');
+
   // 1) Sulla Linea 2: partite da Garibaldi negli ultimi 20 minuti
   const Lr = (O.linea2[t].ritorno || []).map(x => ({g:x[0]+x[1]-G, ms:x[0]+x[1], n:x[2]})).filter(x => x.g <= now && x.g >= now - 20).reverse()
     .map(x => ({k:x.g, lbl:hm(x.g), x}));

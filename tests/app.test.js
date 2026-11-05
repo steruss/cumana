@@ -163,6 +163,23 @@ test('Andata in corso 08:35: sulla Cumana delle 08:24 prendi la Linea 2 delle 08
   a.chiudi();
 });
 
+test('Uscita in corso, sono a Garibaldi alle 15:47: Linea 2 15:54, Cumana 16:24, a casa 16:49', async () => {
+  const a = await apri('2026-11-05T14:47:00Z', { hash: '#ritorno-corso' });
+  const r = a.testo('rcG');
+  assert.match(r, /Prossima Linea 2 ?15:54/);
+  assert.match(r, /Cumana delle 16:24/);
+  assert.match(r, /a casa alle 16:49/);
+  assert.match(r, /Copia 20964/);
+});
+
+test('Andata in corso, sono a La Trencia alle 08:00: Cumana 08:00, Linea 2 08:24', async () => {
+  const a = await apri('2026-11-05T07:00:00Z', { hash: '#andata-corso' });
+  const r = a.testo('acT');
+  assert.match(r, /Prossima Cumana ?08:00/);
+  assert.match(r, /Linea 2 delle 08:24/);
+  assert.match(r, /al lavoro alle 08:54/);
+});
+
 // ---------------- COERENZA DEI FILE ----------------
 test('Versione uguale in app.js e sw.js', () => {
   const v = APP.match(/const VERSIONE = '([\d.]+)'/)[1];
