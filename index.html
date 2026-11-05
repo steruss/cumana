@@ -258,7 +258,7 @@ footer{font-size:.78rem;color:var(--muted);line-height:1.5}
 <script>
 "use strict";
 // Versione dell'app: si aumenta a ogni modifica (e va uguale in sw.js)
-const VERSIONE = '2.0';
+const VERSIONE = '2.1';
 const O = window.ORARI;
 const $ = id => document.getElementById(id);
 const hm = m => { m = ((m % 1440) + 1440) % 1440; return String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0'); };
@@ -750,7 +750,12 @@ setInterval(() => liveStato(), 30000);
 $('ver').textContent = `Versione ${VERSIONE}`;
 
 // ---------------- Offline ----------------
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+if ('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js', {updateViaCache:'none'}).then(reg => reg.update()).catch(()=>{});
+  // Quando arriva una versione nuova, ricarico da solo (una volta sola)
+  let ricaricata = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (!ricaricata){ ricaricata = true; location.reload(); } });
+}
 </script>
 </body>
 </html>

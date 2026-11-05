@@ -1,18 +1,29 @@
-// Funziona offline: tiene in memoria i file della pagina.
-// Quando modifichi data.js o index.html, cambia la versione qui sotto e in index.html (2.0 -> 2.1) per forzare l'aggiornamento.
-const CACHE = 'cumana-2.0';   // stessa versione di index.html
+// Memoria offline dell'app.
+// A ogni modifica aumenta la versione qui sotto E in index.html (VERSIONE), es. 2.1 -> 2.2.
+const CACHE = 'cumana-2.1';
 const FILES = ['./', './index.html', './data.js', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
-self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES))); self.skipWaiting(); });
-self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))));
-  self.clients.claim();
+const ATTESA_RETE = 3000;   // ms: se internet non risponde entro 3 secondi uso la copia salvata
+
+// Installazione: scarico i file SEMPRE freschi (cache:'reload' salta la memoria di Chrome)
+self.addEventListener('install', e => {
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES.map(f => new Request(f, {cache:'reload'})))));
+  self.skipWaiting();
 });
-// Prima la copia salvata (velocissima), intanto aggiorna in sottofondo se c'è rete
+self.addEventListener('activate', e => {
+  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
+});
+
+// Prima internet (così vedi sempre l'ultima versione), la copia salvata solo se sei offline o la rete è lentissima
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET' || new URL(e.request.url).origin !== location.origin) return;
-  e.respondWith(caches.open(CACHE).then(async c => {
-    const hit = await c.match(e.request, {ignoreSearch:true});
-    const net = fetch(e.request).then(r => { if (r.ok) c.put(e.request, r.clone()); return r; }).catch(() => hit);
-    return hit || net;
-  }));
+  e.respondWith((async () => {
+    const c = await caches.open(CACHE);
+    const rete = fetch(e.request, {cache:'no-store'}).then(r => { if (r.ok) c.put(e.request, r.clone()); return r; });
+    const salvata = c.match(e.request, {ignoreSearch:true});
+    try {
+      return await Promise.race([rete, new Promise((_, no) => setTimeout(no, ATTESA_RETE))]);
+    } catch(err){
+      return (await salvata) || rete;
+    }
+  })());
 });
