@@ -2,7 +2,7 @@
 // Gli orari stanno in data.js; la grafica in index.html.
 "use strict";
 // Versione dell'app: si aumenta a ogni modifica (e va uguale in sw.js)
-const VERSIONE = '2.9';
+const VERSIONE = '2.10';
 const O = window.ORARI;
 const $ = id => document.getElementById(id);
 const hm = m => { m = ((m % 1440) + 1440) % 1440; return String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0'); };
@@ -223,7 +223,11 @@ function liveStato(msg){
   const bar = $('livebar'), eta = liveEta();
   bar.classList.toggle('fresh', liveOk()); bar.classList.toggle('old', !!LIVE && !liveOk());
   if (msg){ $('livestato').textContent = msg; return; }
-  if (inCorso && !liveOk()){ $('livestato').textContent = '📡 Sto aggiornando i ritardi… (circa 1 minuto)'; return; }
+  if (inCorso){                     // mentre aspetto il dato nuovo lo dico sempre, anche se quello vecchio è ancora buono
+    bar.classList.remove('fresh'); bar.classList.add('old');
+    const prec = LIVE && LIVE.ok ? ` · ora uso quelli delle ${new Date(LIVE.agg).toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit', timeZone:'Europe/Rome'})}` : '';
+    $('livestato').textContent = `⏳ Aggiorno i ritardi…${prec}`; return;
+  }
   if (!LIVE){ $('livestato').textContent = '📡 Ritardi EAV non disponibili'; return; }
   if (!LIVE.ok){ $('livestato').textContent = '📡 EAV non risponde, uso solo gli orari'; return; }
   const ora = new Date(LIVE.agg).toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit', timeZone:'Europe/Rome'});
@@ -254,26 +258,27 @@ function autoAggiorna(){
 
 async function chiediAggiornamento(){
   if (inCorso) return;
-  inCorso = true;
-  try { await chiediAggiornamentoVero(); } finally { inCorso = false; }
+  if (!getTok()){ $('tokbox').hidden = false; return; }
+  inCorso = true; liveStato();
+  let ok = false;
+  try { ok = await chiediAggiornamentoVero(); } finally { inCorso = false; }
+  if (ok){ liveStato(); render(true); }      // dato nuovo arrivato: barra di nuovo verde
 }
 async function chiediAggiornamentoVero(){
   const tk = getTok();
   if (!tk){ $('tokbox').hidden = false; return; }
   const prima = LIVE ? LIVE.agg : '';
   try { localStorage.setItem('ultimaRichiesta', String(Date.now())); } catch(e){}
-  liveStato('📡 Chiedo a GitHub di controllare… (circa 1 minuto)');
   try {
     const r = await fetch(DISPATCH_URL, {method:'POST', headers:{Authorization:'Bearer '+tk, Accept:'application/vnd.github+json', 'Content-Type':'application/json'}, body:JSON.stringify({ref:'main'})});
     if (!r.ok){ if (r.status !== 401 && r.status !== 403 && r.status !== 404){ liveStato(`⚠️ GitHub ha risposto ${r.status}, riprova`); return; } liveStato('⚠️ Chiave GitHub non valida: inseriscila di nuovo'); $('tokbox').hidden = false; return; }
   } catch(e){ liveStato('⚠️ Niente rete, riprova'); return; }
-  for (let i=0; i<16; i++){            // controllo ogni 10 secondi per ~3 minuti
-    await new Promise(ok => setTimeout(ok, 10000));
+  for (let i=0; i<45; i++){            // controllo ogni 4 secondi per ~3 minuti
+    await new Promise(ok => setTimeout(ok, 4000));
     await caricaLive();
-    if (LIVE && LIVE.agg !== prima) return;
-    liveStato(`📡 GitHub sta controllando… (${(i+1)*10} s)`);
+    if (LIVE && LIVE.agg !== prima) return true;
   }
-  liveStato();
+  liveStato('⚠️ GitHub non ha risposto, riprova con 🔄');
 }
 $('liveagg').addEventListener('click', chiediAggiornamento);
 $('toksave').addEventListener('click', () => {

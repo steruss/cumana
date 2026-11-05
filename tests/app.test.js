@@ -116,6 +116,7 @@ test('Ritardi vecchi (oltre 20 minuti): non li usa', async () => {
 test('All\'apertura chiede da solo i ritardi se sono vecchi', async () => {
   const vecchi = await apri('2026-11-05T07:00:00Z', { chiave: 'x', live: liveFinto({ agg: '2026-11-05T06:40:00Z' }) });
   assert.equal(vecchi.richieste(), 1);
+  assert.match(vecchi.testo('livestato'), /Aggiorno i ritardi/);   // mentre aspetta lo dice
   const freschi = await apri('2026-11-05T07:00:00Z', { chiave: 'x', live: liveFinto({ agg: '2026-11-05T06:58:00Z' }) });
   assert.equal(freschi.richieste(), 0);                  // dato di 2 minuti fa: non serve
   const notte = await apri('2026-11-05T02:00:00Z', { chiave: 'x', live: liveFinto({ agg: '2026-11-05T01:00:00Z' }) });
@@ -141,6 +142,15 @@ test('Numeri dei treni Cumana come nel PDF EAV', () => {
   assert.equal(trova(O.cumanaRitorno, 504), 5084);       // Montesanto 08:24
   assert.equal(trova(O.cumanaRitorno, 1272), 5212);      // Montesanto 21:12
   assert.equal(trova(O.cumanaRitorno, 1296), 52136);     // Montesanto 21:36, l'ultima
+});
+
+test('Dopo la richiesta, quando arriva il dato nuovo la barra torna verde', async () => {
+  const live = liveFinto({ agg: '2026-11-05T06:40:00Z' });
+  const a = await apri('2026-11-05T07:00:00Z', { chiave: 'x', live });
+  assert.match(a.testo('livestato'), /Aggiorno i ritardi/);
+  live.agg = '2026-11-05T07:00:00Z';                     // GitHub ha scritto il dato nuovo
+  await new Promise(r => setTimeout(r, 4300));            // il prossimo controllo è dopo 4 secondi
+  assert.match(a.testo('livestato'), /Ritardi EAV delle 08:00 \(adesso\)/);
 });
 
 // ---------------- IN CORSO ----------------
