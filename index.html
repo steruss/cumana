@@ -96,6 +96,7 @@ details.sim summary{cursor:pointer;color:var(--muted);font-weight:600}
 .vt{display:inline-flex;flex-direction:column;align-self:flex-start;margin-top:4px;padding:6px 10px;border-radius:6px;border:1px solid var(--accent);color:var(--accent);font-size:.85rem;font-weight:700;text-decoration:none}
 .vt small{font-weight:400;font-size:.75rem;color:var(--muted)}
 .livebtn{align-self:flex-start;margin-top:4px;padding:6px 10px;border-radius:6px;border:1px solid var(--amber);color:var(--amber);font-size:.85rem;font-weight:700;text-decoration:none}
+.live small{display:block;font-weight:400;font-size:.75rem;color:var(--muted)}
 .live{display:block;text-align:center;padding:12px;border-radius:10px;border:1px solid var(--accent);color:var(--accent);font-weight:700;text-decoration:none}
 footer{font-size:.78rem;color:var(--muted);line-height:1.5}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -217,7 +218,7 @@ footer{font-size:.78rem;color:var(--muted);line-height:1.5}
     </div>
   </section>
 
-  <a class="live" href="http://www.viaggiatreno.it/infomobilitamobile/pages/cercaTreno/cercaTreno.jsp" target="_blank" rel="noopener">Ritardi Linea 2 (Trenitalia) ↗</a>
+  <a class="live" id="l2live" href="http://www.viaggiatreno.it/infomobilitamobile/pages/cercaTreno/cercaTreno.jsp" target="_blank" rel="noopener">📡 Ritardi Linea 2 (Trenitalia) ↗<small id="l2livesub"></small></a>
 
   <details class="sim" id="turnibox">
     <summary>Verifica turni</summary>
@@ -371,7 +372,7 @@ function renderAndata(now, day){
       ? `Orario ${TIPO_LBL[r.tipo]} non disponibile: conto un treno ogni ${r.hw} min con l'attesa peggiore.`
       : `A Garibaldi alle ${hm(r.l2.dep+G)}, al lavoro verso le ${hm(r.l2.lav)}`;
     $('a2x').textContent = r.altri && r.altri.length ? 'Poi: ' + r.altri.map(x=>hm(x.dep)).join(' · ') : '';
-    $('a2vt').innerHTML = vtBtn(r.l2.n);
+    $('a2vt').innerHTML = vtBtn(r.l2.n); curL2.andata = r.l2.n;
     const v = r.stima ? null : voloL2(r.c.arr, r.l2.dep, r.tipo);
     $('a2v').hidden = !v; if (v) $('a2v').innerHTML = voloTxt(v, 'Linea 2', `al lavoro ${hm(v.lav)}`);
     $('gW').textContent = hm(r.l2.lav);
@@ -419,7 +420,7 @@ function renderRitorno(now, day){
   $('r2n').textContent = (domani ? '🌙 Stasera non ci sono più coincidenze: ecco la prima di domani. ' : `Uscendo dal lavoro adesso (${W} min a piedi). `)
     + (r.stima ? `Orario ${TIPO_LBL[r.tipo]} non disponibile: conto l'attesa peggiore (un treno ogni ${r.hw} min).` : `Arrivo a Montesanto alle ${hm(r.l2.ms)}`);
   $('r2x').textContent = r.altri.length ? 'Poi: ' + r.altri.map(x=>hm(x.g)).join(' · ') : '';
-  $('r2vt').innerHTML = vtBtn(r.l2.n);
+  $('r2vt').innerHTML = vtBtn(r.l2.n); curL2.ritorno = r.l2.n;
   $('r1t').textContent = hm(r.cum.dep); setIn($('r1i'), r.cum.dep - n);
   badge($('r1i'), domani ? null : liveRit('montesanto_p', r.cum.dep));
   $('r1n').textContent = `Arrivo a La Trencia alle ${hm(r.cum.arr)}` + ((r.sopp||[]).length ? ` · ❌ ${r.sopp.map(c=>hm(c.dep)).join(', ')} SOPPRESSA` : '');
@@ -502,11 +503,31 @@ $('toksave').addEventListener('click', () => {
 // ---------------- Ritardo Linea 2: copia il numero e apre ViaggiaTreno ----------------
 const VT_URL = 'http://www.viaggiatreno.it/infomobilitamobile/pages/cercaTreno/cercaTreno.jsp';
 const vtBtn = n => n ? `<a class="vt" href="${VT_URL}" target="_blank" rel="noopener" data-n="${n}">📡 Ritardo treno ${n}<small>copio il numero, tu incollalo</small></a>` : '';
+// Copia sincrona (funziona anche se subito dopo si apre un'altra pagina), più la copia "moderna" come rinforzo
+function copia(testo){
+  let ok = false;
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = testo; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+    document.body.appendChild(ta); ta.focus(); ta.select(); ta.setSelectionRange(0, testo.length);
+    ok = document.execCommand('copy'); ta.remove();
+  } catch(err){}
+  try { if (navigator.clipboard) navigator.clipboard.writeText(testo).then(()=>{}, ()=>{}); } catch(err){}
+  return ok;
+}
+const curL2 = {andata:null, ritorno:null};
 document.addEventListener('click', e => {
-  const a = e.target.closest && e.target.closest('a.vt'); if (!a) return;
-  try { navigator.clipboard.writeText(a.dataset.n).catch(()=>{}); } catch(err){}
-  a.querySelector('small').textContent = `✅ ${a.dataset.n} copiato: incollalo e premi Cerca`;
+  const a = e.target.closest && e.target.closest('a[data-n]'); if (!a) return;
+  const ok = copia(a.dataset.n), sm = a.querySelector('small');
+  if (sm) sm.textContent = ok ? `✅ ${a.dataset.n} copiato: incollalo e premi Cerca` : `Numero treno: ${a.dataset.n} (scrivilo nel campo)`;
 });
+// Il pulsante grande in fondo usa il treno consigliato nel tab aperto
+function aggiornaL2Btn(){
+  const b = $('l2live'); if (!b) return;
+  const n = (tabAttivo.startsWith('ritorno') ? curL2.ritorno : curL2.andata);
+  if (n){ b.dataset.n = n; $('l2livesub').textContent = `treno ${n} · copio il numero, tu incollalo`; }
+  else { delete b.dataset.n; $('l2livesub').textContent = ''; }
+}
 
 // ---------------- "Al volo": la corsa prima di quella sicura ----------------
 // Linea 2 che parte dopo l'arrivo a Montesanto ma con meno dei 7 minuti di cambio
@@ -629,6 +650,7 @@ function render(force){
   renderAndata(now, day);
   renderRitorno(now, day);
   renderCorso(now, day);
+  aggiornaL2Btn();
   const sc = O.scadenza.split('-').map(Number), oggi = t.y*10000 + t.mo*100 + t.d;
   const sca = $('scaduto'); sca.hidden = oggi < sc[0]*10000 + sc[1]*100 + sc[2];
   sca.textContent = `⚠️ Gli orari sono stati controllati il ${O.controllati} e potrebbero essere cambiati. Rifai le simulazioni su Lefrecce e aggiorna data.js.`;
@@ -678,7 +700,9 @@ O.turni.filter(t=>!t.auto).forEach(t => {
 
 // ---------------- Tab ----------------
 const TABS = ['andata','andata-corso','ritorno','ritorno-corso'];
+let tabAttivo = 'andata';
 function showTab(name){
+  tabAttivo = name; setTimeout(aggiornaL2Btn, 0);
   TABS.forEach(n => { $(n).hidden = n !== name; $('tab-'+n).setAttribute('aria-selected', n === name); });
   try { localStorage.setItem('tab', name); } catch(e){}
   if (location.hash !== '#'+name) history.replaceState(null, '', '#'+name);
