@@ -48,6 +48,8 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .res{display:flex;flex-direction:column;gap:4px}
 .res .row{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
 .res .tt{font-family:var(--mono);font-weight:700;font-size:2rem;line-height:1;font-variant-numeric:tabular-nums}
+.volo{font-size:.88rem;color:var(--amber);border:1px dashed var(--amber);border-radius:6px;padding:6px 8px}
+.volo b{font-family:var(--mono)}
 .res .soft{font-family:var(--mono);color:var(--muted);font-size:.95rem}
 .transit{background:var(--warn-bg);border-bottom:2px solid var(--amber)}
 .transit .row{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
@@ -139,6 +141,7 @@ footer{font-size:.78rem;color:var(--muted);line-height:1.5}
       <div class="big"><span class="time" id="a2t">--:--</span><span class="in" id="a2i"></span></div>
       <div class="note" id="a2n"></div>
       <div class="next" id="a2x"></div>
+      <div class="volo" id="a2v" hidden></div>
     </div>
     <div class="goals">
       <div class="goal"><span class="lbl">Esci di casa</span><span class="val" id="gA">--</span><span class="sub" id="gAs"></span></div>
@@ -198,6 +201,7 @@ footer{font-size:.78rem;color:var(--muted);line-height:1.5}
       <div class="big"><span class="time" id="r1t">--:--</span><span class="in" id="r1i"></span></div>
       <div class="note" id="r1n"></div>
       <div class="next" id="r1x"></div>
+      <div class="volo" id="r1v" hidden></div>
       <a class="livebtn" href="https://orariotreni.eavsrl.it/teleindicatori/?stazione=801&amp;tipo=P" target="_blank" rel="noopener">📡 Ritardi live a Montesanto ↗</a>
     </div>
     <div class="goals">
@@ -357,6 +361,8 @@ function renderAndata(now, day){
       ? `Orario ${TIPO_LBL[r.tipo]} non disponibile: conto un treno ogni ${r.hw} min con l'attesa peggiore.`
       : `A Garibaldi alle ${hm(r.l2.dep+G)}, al lavoro verso le ${hm(r.l2.lav)}`;
     $('a2x').textContent = r.altri && r.altri.length ? 'Poi: ' + r.altri.map(x=>hm(x.dep)).join(' · ') : '';
+    const v = r.stima ? null : voloL2(r.c.arr, r.l2.dep, r.tipo);
+    $('a2v').hidden = !v; if (v) $('a2v').innerHTML = voloTxt(v, 'Linea 2', `al lavoro ${hm(v.lav)}`);
     $('gW').textContent = hm(r.l2.lav);
     $('gWs').textContent = `${D(domani)}con la Linea 2 delle ${hm(r.l2.dep)} e ${W} min a piedi`;
   } else {
@@ -406,6 +412,8 @@ function renderRitorno(now, day){
   badge($('r1i'), domani ? null : liveRit('montesanto_p', r.cum.dep));
   $('r1n').textContent = `Arrivo a La Trencia alle ${hm(r.cum.arr)}`;
   $('r1x').textContent = r.poi.length ? 'Poi: ' + r.poi.map(x=>hm(x.dep)).join(' · ') : '';
+  const v = (r.stima || domani) ? null : voloCumana(r.l2.ms, r.cum.dep);
+  $('r1v').hidden = !v; if (v) $('r1v').innerHTML = voloTxt(v, 'Cumana', `a casa ${hm(v.casa)}`);
   const dx = r.esci - n;
   $('gL').textContent = dx<=0 ? 'adesso!' : dx<60 ? `tra ${dx} min` : (domani?'domani ':'') + hm(r.esci);
   $('gLs').textContent = `${domani?'Domani e':'E'}ntro le ${hm(r.esci)}, per la Cumana delle ${hm(r.cum.dep)}`;
@@ -477,6 +485,22 @@ $('toksave').addEventListener('click', () => {
   $('tok').value = ''; $('tokbox').hidden = true; chiediAggiornamento();
 });
 
+// ---------------- "Al volo": la corsa prima di quella sicura ----------------
+// Linea 2 che parte dopo l'arrivo a Montesanto ma con meno dei 7 minuti di cambio
+function voloL2(arr, sicura, t){
+  const L = O.linea2[t].andata; if (!L) return null;
+  const x = L.filter(x => x[0] < sicura && x[0] - arr >= 1).pop();
+  return x ? {dep:x[0], margine:x[0]-arr, lav:x[0]+G+W} : null;
+}
+// Cumana che parte da Montesanto dopo l'arrivo della Linea 2, ma con poco margine (conta anche il suo ritardo)
+function voloCumana(ms, sicura){
+  const c = O.cumanaRitorno.filter(c => c.dep < sicura && c.dep + ((liveRit('montesanto_p', c.dep)||{}).rit||0) - ms >= 1).pop();
+  if (!c) return null;
+  const rit = (liveRit('montesanto_p', c.dep)||{}).rit || 0;
+  return {dep:c.dep, rit, margine:c.dep + rit - ms, casa:c.arr + rit + C};
+}
+const voloTxt = (v, cosa, fine) => `⚡ <b>Al volo:</b> ${cosa} delle <b>${hm(v.dep)}</b>${v.rit?` (+${v.rit}′)`:''}, hai solo ${v.margine} min per il cambio · ${fine}`;
+
 // ---------------- Tab "in corso": scegli il treno su cui sei ----------------
 const scelto = {};   // treno scelto per ogni gruppo (null = il più recente)
 function chips(id, items, now){
@@ -506,7 +530,8 @@ function renderCorso(now, day){
     $('acCr').innerHTML = `<span>Arrivo a Montesanto alle <b>${hm(arr)}</b>${ritTxt(lr)}</span>` + (l
       ? `<div class="row"><span>Prendi la Linea 2 delle</span><span class="tt">${hm(l.treni[0].dep)}</span></div>
          <span>Al lavoro alle <b>${hm(l.treni[0].lav)}</b></span>
-         ${l.treni.length>1 ? `<span class="soft">Se perdi quella: ${l.treni.slice(1,4).map(x=>hm(x.dep)).join(' · ')}</span>` : ''}`
+         ${l.treni.length>1 ? `<span class="soft">Se perdi quella: ${l.treni.slice(1,4).map(x=>hm(x.dep)).join(' · ')}</span>` : ''}
+         ${(v => v ? `<span class="volo">${voloTxt(v, 'Linea 2', `al lavoro ${hm(v.lav)}`)}</span>` : '')(l.stima ? null : voloL2(arr, l.treni[0].dep, t))}`
       : nessuno('Linea 2 già chiusa.'));
   } else $('acCr').innerHTML = nessuno('Nessuna Cumana partita da La Trencia negli ultimi 40 minuti.');
 
@@ -538,7 +563,8 @@ function renderCorso(now, day){
       $('rcLr').innerHTML = `<span>Arrivo a Montesanto alle <b>${hm(sel.x.ms)}</b></span>
         <div class="row"><span>Prendi la Cumana delle</span><span class="tt">${hm(cs[0].dep)}</span>${ritTxt(lr)}</div>
         <span>A casa alle <b>${hm(cs[0].arr + rit + C)}</b></span>
-        ${cs[1] ? `<span class="soft">Se perdi quella: ${cs.slice(1,3).map(c=>hm(c.dep)).join(' · ')}</span>` : ''}`;
+        ${cs[1] ? `<span class="soft">Se perdi quella: ${cs.slice(1,3).map(c=>hm(c.dep)).join(' · ')}</span>` : ''}
+        ${(v => v ? `<span class="volo">${voloTxt(v, 'Cumana', `a casa ${hm(v.casa)}`)}</span>` : '')(voloCumana(sel.x.ms, cs[0].dep))}`;
     } else $('rcLr').innerHTML = nessuno('Nessuna Cumana utile stasera.');
   } else $('rcLr').innerHTML = nessuno('Nessuna Linea 2 partita da Garibaldi negli ultimi 20 minuti.');
 
