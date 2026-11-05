@@ -285,12 +285,14 @@ function l2Andata(pronto, t){
 // Una catena completa partendo da una certa Cumana
 function catenaAndata(c, t){ const l = l2Andata(c.arr + X, t); return l ? {c, l2:l.treni[0], stima:l.stima, hw:l.hw, altri:l.treni.slice(1,4)} : {c, l2:null}; }
 
-function andata(now, day){
+function andata(now, day, dom){
   const t = tipo(day);
-  const ok = O.cumanaAndata.filter(c=>c.dep - C >= now);
+  const tutte = O.cumanaAndata.filter(c=>c.dep - C >= now);
+  const ok = tutte.filter(c => dom || !soppressa('trencia_p', c.dep));     // salto le soppresse
   if (!ok.length) return null;
   const persa = O.cumanaAndata.filter(c=>c.dep >= now && c.dep - C < now);
-  return Object.assign(catenaAndata(ok[0], t), {persa:persa[0], poi:ok.slice(1,4), tipo:t});
+  const sopp = tutte.filter(c => c.dep < ok[0].dep);
+  return Object.assign(catenaAndata(ok[0], t), {persa:persa[0], sopp, poi:ok.slice(1,4), tipo:t});
 }
 
 // Linea 2 ritorno: treni da Garibaldi che posso prendere arrivando al binario a "pronto"
@@ -304,23 +306,26 @@ function l2Ritorno(pronto, t){
   const hw = O.frequenzaStima[t], g = Math.max(pronto, S.primaGaribaldi);
   return {treni:[{g, ms:g+hw+G}], stima:true, hw};
 }
-function ritorno(now, day){
+function ritorno(now, day, dom){
   const t = tipo(day);
   const l = l2Ritorno(now + W, t); if (!l) return null;
-  const b = O.cumanaRitorno.filter(c=>c.dep >= l.treni[0].ms + X); if (!b.length) return null;
+  const tutte = O.cumanaRitorno.filter(c=>c.dep >= l.treni[0].ms + X);
+  const b = tutte.filter(c => dom || !soppressa('montesanto_p', c.dep));  // salto le soppresse
+  if (!b.length) return null;
+  const sopp = tutte.filter(c => c.dep < b[0].dep);
   const cum = b[0];
   // ultimo momento utile per uscire dal lavoro e prendere comunque quella Cumana
   let esci;
   if (!l.stima){ const ult = l.treni.filter(x=>x.ms + X <= cum.dep).pop(); esci = ult.g - W; }
   else esci = cum.dep - X - G - l.hw - W;
-  return {l2:l.treni[0], altri:l.treni.slice(1,4), stima:l.stima, hw:l.hw, cum, poi:b.slice(1,4), esci:Math.max(esci, now), casa:cum.arr + C, tipo:t};
+  return {l2:l.treni[0], altri:l.treni.slice(1,4), stima:l.stima, hw:l.hw, cum, poi:b.slice(1,4), esci:Math.max(esci, now), casa:cum.arr + C, tipo:t, sopp};
 }
 
 // Prova oggi, se non c'è niente passa a domani
 function conDomani(fn, now, day){
   const r = fn(now, day); if (r) return {r, now, domani:false};
   const dd = addDays(day.y, day.mo, day.d, 1);
-  return {r: fn(now - 1440, dd), now: now - 1440, domani:true};
+  return {r: fn(now - 1440, dd, true), now: now - 1440, domani:true};
 }
 
 // Prossimo turno: ultima Cumana che ti fa arrivare in tempo
@@ -352,7 +357,8 @@ function renderAndata(now, day){
   $('a1t').textContent = hm(r.c.dep); setIn($('a1i'), r.c.dep - n);
   badge($('a1i'), domani ? null : liveRit('trencia_p', r.c.dep));
   $('a1n').textContent = `Arrivo a Montesanto alle ${hm(r.c.arr)}` + (domani ? ' · 🌙 prima Cumana di domani' : '');
-  $('a1l').textContent = r.persa ? `Quella delle ${hm(r.persa.dep)} ormai è persa 🏃` : '';
+  $('a1l').textContent = [r.persa ? `Quella delle ${hm(r.persa.dep)} ormai è persa 🏃` : '',
+    ...(r.sopp||[]).map(c => `❌ La Cumana delle ${hm(c.dep)} è SOPPRESSA`)].filter(Boolean).join(' · ');
   $('a1x').textContent = r.poi.length ? 'Poi: ' + r.poi.map(x=>hm(x.dep)).join(' · ') : '';
   $('a2tag').hidden = !r.stima;
   if (r.l2){
@@ -410,7 +416,7 @@ function renderRitorno(now, day){
   $('r2x').textContent = r.altri.length ? 'Poi: ' + r.altri.map(x=>hm(x.g)).join(' · ') : '';
   $('r1t').textContent = hm(r.cum.dep); setIn($('r1i'), r.cum.dep - n);
   badge($('r1i'), domani ? null : liveRit('montesanto_p', r.cum.dep));
-  $('r1n').textContent = `Arrivo a La Trencia alle ${hm(r.cum.arr)}`;
+  $('r1n').textContent = `Arrivo a La Trencia alle ${hm(r.cum.arr)}` + ((r.sopp||[]).length ? ` · ❌ ${r.sopp.map(c=>hm(c.dep)).join(', ')} SOPPRESSA` : '');
   $('r1x').textContent = r.poi.length ? 'Poi: ' + r.poi.map(x=>hm(x.dep)).join(' · ') : '';
   const v = (r.stima || domani) ? null : voloCumana(r.l2.ms, r.cum.dep);
   $('r1v').hidden = !v; if (v) $('r1v').innerHTML = voloTxt(v, 'Cumana', `a casa ${hm(v.casa)}`);
@@ -430,6 +436,8 @@ let LIVE = null;
 function getTok(){ try { return localStorage.getItem('ghtok') || ''; } catch(e){ return ''; } }
 function liveEta(){ return LIVE ? Math.round((Date.now() - Date.parse(LIVE.agg)) / 60000) : Infinity; }
 function liveOk(){ return LIVE && LIVE.ok && liveEta() <= LIVE_MAX_ETA && simTime == null && simDay === 0; }
+const SOPP = /soppress|cancellat|non effettuat/i;
+function soppressa(lista, m){ const r = liveRit(lista, m); return !!(r && SOPP.test(r.info || '')); }
 function liveRit(lista, m){
   if (!liveOk() || !LIVE[lista]) return null;
   return LIVE[lista].find(x => x.ora === hm(m)) || null;
@@ -494,7 +502,7 @@ function voloL2(arr, sicura, t){
 }
 // Cumana che parte da Montesanto dopo l'arrivo della Linea 2, ma con poco margine (conta anche il suo ritardo)
 function voloCumana(ms, sicura){
-  const c = O.cumanaRitorno.filter(c => c.dep < sicura && c.dep + ((liveRit('montesanto_p', c.dep)||{}).rit||0) - ms >= 1).pop();
+  const c = O.cumanaRitorno.filter(c => !soppressa('montesanto_p', c.dep) && c.dep < sicura && c.dep + ((liveRit('montesanto_p', c.dep)||{}).rit||0) - ms >= 1).pop();
   if (!c) return null;
   const rit = (liveRit('montesanto_p', c.dep)||{}).rit || 0;
   return {dep:c.dep, rit, margine:c.dep + rit - ms, casa:c.arr + rit + C};
@@ -557,7 +565,7 @@ function renderCorso(now, day){
     .map(x => ({k:x.g, lbl:hm(x.g), x}));
   sel = chips('rcL', Lr, now);
   if (sel){
-    const cs = O.cumanaRitorno.filter(c => c.dep >= sel.x.ms + X);
+    const cs = O.cumanaRitorno.filter(c => c.dep >= sel.x.ms + X && !soppressa('montesanto_p', c.dep));
     if (cs.length){
       const lr = liveRit('montesanto_p', cs[0].dep), rit = lr ? lr.rit : 0;
       $('rcLr').innerHTML = `<span>Arrivo a Montesanto alle <b>${hm(sel.x.ms)}</b></span>
@@ -569,7 +577,7 @@ function renderCorso(now, day){
   } else $('rcLr').innerHTML = nessuno('Nessuna Linea 2 partita da Garibaldi negli ultimi 20 minuti.');
 
   // 2) A Montesanto: prossime Cumane
-  const cm = O.cumanaRitorno.filter(c => c.dep >= now + 3);
+  const cm = O.cumanaRitorno.filter(c => c.dep >= now + 3 && !soppressa('montesanto_p', c.dep));
   if (cm.length){
     const lr = liveRit('montesanto_p', cm[0].dep), rit = lr ? lr.rit : 0;
     $('rcM').innerHTML = `<div class="row"><span>Prossima Cumana</span><span class="tt">${hm(cm[0].dep)}</span>${ritTxt(lr)}<span>${txtTra(cm[0].dep + rit - now)}</span></div>
