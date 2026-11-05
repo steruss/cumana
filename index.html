@@ -21,6 +21,7 @@
   --bg:#0d1522; --panel:#152033; --ink:#e7edf6; --muted:#93a3ba; --line:#26354d;
   --accent:#5aa6f0; --on-accent:#0d1522; --amber:#f2b33d; --ok:#5fd18f; --bad:#ff8a80; --warn-bg:#3a2e10; color-scheme:dark}}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html,body{margin:0}
 body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;
   padding:max(12px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(32px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
@@ -77,6 +78,12 @@ details.sim{background:var(--panel);border:1px solid var(--line);border-radius:1
 details.sim summary{cursor:pointer;color:var(--muted);font-weight:600}
 .controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
 .controls input,.controls select{font:inherit;font-family:var(--mono);padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink)}
+.livebar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:.85rem;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+.livebar.fresh{color:var(--ok)} .livebar.old{color:var(--amber)}
+.tokbox{display:flex;flex-direction:column;gap:8px;font-size:.85rem;background:var(--panel);border:1px solid var(--amber);border-radius:10px;padding:10px 12px}
+.tokbox input{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+.rit{font-family:var(--mono);font-weight:700;font-size:.95rem;color:var(--on-accent);background:var(--bad);border-radius:5px;padding:2px 7px}
+.rit.zero{background:var(--ok)}
 .livebtn{align-self:flex-start;margin-top:4px;padding:6px 10px;border-radius:6px;border:1px solid var(--amber);color:var(--amber);font-size:.85rem;font-weight:700;text-decoration:none}
 .live{display:block;text-align:center;padding:12px;border-radius:10px;border:1px solid var(--accent);color:var(--accent);font-weight:700;text-decoration:none}
 footer{font-size:.78rem;color:var(--muted);line-height:1.5}
@@ -95,6 +102,16 @@ footer{font-size:.78rem;color:var(--muted);line-height:1.5}
   <div class="tabs" role="tablist">
     <button type="button" role="tab" id="tab-andata" data-tab="andata" aria-selected="true">➜ Andata<small>vado a lavoro</small></button>
     <button type="button" role="tab" id="tab-ritorno" data-tab="ritorno" aria-selected="false">⌂ Ritorno<small>torno a casa</small></button>
+  </div>
+
+  <div class="livebar" id="livebar">
+    <span id="livestato">📡 Ritardi EAV: in caricamento…</span>
+    <button type="button" id="liveagg">🔄 Aggiorna</button>
+  </div>
+  <div class="tokbox" id="tokbox" hidden>
+    <span>Per usare il pulsante serve la chiave GitHub (la inserisci una volta sola, resta solo su questo telefono).</span>
+    <input type="password" id="tok" placeholder="github_pat_…" autocomplete="off">
+    <button type="button" id="toksave">Salva chiave</button>
   </div>
 
   <!-- ===================== ANDATA ===================== -->
@@ -284,6 +301,7 @@ function renderAndata(now, day){
   const {r, now:n, domani} = conDomani(andata, now, day);
   if (!r){ ['a1t','a2t','gW'].forEach(i=>$(i).textContent='--:--'); return; }
   $('a1t').textContent = hm(r.c.dep); setIn($('a1i'), r.c.dep - n);
+  badge($('a1i'), domani ? null : liveRit('trencia_p', r.c.dep));
   $('a1n').textContent = `Arrivo a Montesanto alle ${hm(r.c.arr)}` + (domani ? ' · 🌙 prima Cumana di domani' : '');
   $('a1l').textContent = r.persa ? `Quella delle ${hm(r.persa.dep)} ormai è persa 🏃` : '';
   $('a1x').textContent = r.poi.length ? 'Poi: ' + r.poi.map(x=>hm(x.dep)).join(' · ') : '';
@@ -340,6 +358,7 @@ function renderRitorno(now, day){
     + (r.stima ? `Orario ${TIPO_LBL[r.tipo]} non disponibile: conto l'attesa peggiore (un treno ogni ${r.hw} min).` : `Arrivo a Montesanto alle ${hm(r.l2.ms)}`);
   $('r2x').textContent = r.altri.length ? 'Poi: ' + r.altri.map(x=>hm(x.g)).join(' · ') : '';
   $('r1t').textContent = hm(r.cum.dep); setIn($('r1i'), r.cum.dep - n);
+  badge($('r1i'), domani ? null : liveRit('montesanto_p', r.cum.dep));
   $('r1n').textContent = `Arrivo a La Trencia alle ${hm(r.cum.arr)}`;
   $('r1x').textContent = r.poi.length ? 'Poi: ' + r.poi.map(x=>hm(x.dep)).join(' · ') : '';
   const dx = r.esci - n;
@@ -349,6 +368,70 @@ function renderRitorno(now, day){
   $('gRs').textContent = `${D(domani)}con ${C} min a piedi da La Trencia`;
 }
 
+// ---------------- Ritardi EAV in tempo (quasi) reale ----------------
+// GitHub legge i tabelloni EAV ogni 10 minuti (o quando premi "Aggiorna") e li salva in live.json sul ramo "live".
+const LIVE_URL = 'https://api.github.com/repos/steruss/cumana/contents/live.json?ref=live';
+const DISPATCH_URL = 'https://api.github.com/repos/steruss/cumana/actions/workflows/live.yml/dispatches';
+const LIVE_MAX_ETA = 20;   // minuti: oltre, il dato è troppo vecchio e non lo uso
+let LIVE = null;
+function getTok(){ try { return localStorage.getItem('ghtok') || ''; } catch(e){ return ''; } }
+function liveEta(){ return LIVE ? Math.round((Date.now() - Date.parse(LIVE.agg)) / 60000) : Infinity; }
+function liveOk(){ return LIVE && LIVE.ok && liveEta() <= LIVE_MAX_ETA && simTime == null && simDay === 0; }
+function liveRit(lista, m){
+  if (!liveOk() || !LIVE[lista]) return null;
+  return LIVE[lista].find(x => x.ora === hm(m)) || null;
+}
+function badge(el, lr){
+  el.querySelectorAll && el.parentNode.querySelectorAll('.rit').forEach(x=>x.remove());
+  if (!lr) return;
+  const b = document.createElement('span');
+  b.className = 'rit' + (lr.rit ? '' : ' zero');
+  b.textContent = lr.info ? lr.info : (lr.rit ? `+${lr.rit}′` : 'in orario');
+  el.parentNode.appendChild(b);
+}
+function liveStato(msg){
+  const bar = $('livebar'), eta = liveEta();
+  bar.classList.toggle('fresh', liveOk()); bar.classList.toggle('old', !!LIVE && !liveOk());
+  if (msg){ $('livestato').textContent = msg; return; }
+  if (!LIVE){ $('livestato').textContent = '📡 Ritardi EAV non disponibili'; return; }
+  if (!LIVE.ok){ $('livestato').textContent = '📡 EAV non risponde, uso solo gli orari'; return; }
+  const ora = new Date(LIVE.agg).toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit', timeZone:'Europe/Rome'});
+  $('livestato').textContent = liveOk() ? `📡 Ritardi EAV delle ${ora} (${eta<1?'adesso':eta+' min fa'})`
+    : `📡 Ritardi delle ${ora}: troppo vecchi, non li uso`;
+}
+async function caricaLive(){
+  try {
+    const h = {Accept:'application/vnd.github.raw+json'}, tk = getTok();
+    if (tk) h.Authorization = 'Bearer ' + tk;
+    const r = await fetch(LIVE_URL + '&t=' + Date.now(), {headers:h, cache:'no-store'});
+    if (r.ok){ LIVE = await r.json(); }
+  } catch(e){}
+  liveStato(); render(true);
+}
+async function chiediAggiornamento(){
+  const tk = getTok();
+  if (!tk){ $('tokbox').hidden = false; return; }
+  const prima = LIVE ? LIVE.agg : '';
+  liveStato('📡 Chiedo a GitHub di controllare… (circa 1 minuto)');
+  try {
+    const r = await fetch(DISPATCH_URL, {method:'POST', headers:{Authorization:'Bearer '+tk, Accept:'application/vnd.github+json'}, body:JSON.stringify({ref:'main'})});
+    if (r.status === 401 || r.status === 403 || r.status === 404){ liveStato('⚠️ Chiave GitHub non valida: inseriscila di nuovo'); $('tokbox').hidden = false; return; }
+  } catch(e){ liveStato('⚠️ Niente rete, riprova'); return; }
+  for (let i=0; i<16; i++){            // controllo ogni 10 secondi per ~3 minuti
+    await new Promise(ok => setTimeout(ok, 10000));
+    await caricaLive();
+    if (LIVE && LIVE.agg !== prima) return;
+    liveStato(`📡 GitHub sta controllando… (${(i+1)*10} s)`);
+  }
+  liveStato();
+}
+$('liveagg').addEventListener('click', chiediAggiornamento);
+$('toksave').addEventListener('click', () => {
+  const v = $('tok').value.trim(); if (!v) return;
+  try { localStorage.setItem('ghtok', v); } catch(e){}
+  $('tok').value = ''; $('tokbox').hidden = true; chiediAggiornamento();
+});
+
 // ---------------- Sei già in viaggio? ----------------
 // Si accende da solo quando c'è un treno su cui potresti essere seduto adesso.
 function renderInViaggio(now, day){
@@ -357,12 +440,14 @@ function renderInViaggio(now, day){
   const sulla = O.cumanaAndata.filter(c => c.dep <= now && c.dep >= now - 30).reverse().slice(0,2);
   let h = '';
   sulla.forEach(c => {
-    const l = l2Andata(c.arr + X, t);
+    const lr = liveRit('montesanto_a', c.arr);          // ritardo vero all'arrivo a Montesanto
+    const l = l2Andata(c.arr + (lr ? lr.rit : 0) + X, t);
     if (!l) return;
     const [p, ...alt] = l.treni;
-    h += `<span class="q">🚃 Sei sulla Cumana delle ${hm(c.dep)}?</span>
+    const rt = lr ? (lr.rit ? ` <span class="rit">+${lr.rit}′</span> arriva ${hm(c.arr + lr.rit)}` : ' <span class="rit zero">in orario</span>') : '';
+    h += `<span class="q">🚃 Sei sulla Cumana delle ${hm(c.dep)}?${rt}</span>
       <div class="row"><span>Linea 2 delle</span><span class="tt">${(l.stima?'~':'') + hm(p.dep)}</span><span>· al lavoro ${hm(p.lav)}</span></div>
-      ${alt.length ? `<span class="note">Se la Cumana è in ritardo: ${alt.slice(0,3).map(x=>hm(x.dep)).join(' · ')}</span>` : ''}<hr>`;
+      ${alt.length ? `<span class="note">${lr ? 'Se ritarda ancora' : 'Se la Cumana è in ritardo'}: ${alt.slice(0,3).map(x=>hm(x.dep)).join(' · ')}</span>` : ''}<hr>`;
   });
   if (h){
     const l = l2Andata(now + 3, t);   // già a Montesanto: 3 min per scendere al binario
@@ -478,6 +563,11 @@ $('foot').textContent = `Orari controllati il ${O.controllati}. Cumana: PDF EAV,
 render(true);
 setInterval(render, 1000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) render(true); });
+
+caricaLive();
+setInterval(() => { if (!document.hidden) caricaLive(); }, 120000);       // ogni 2 minuti
+document.addEventListener('visibilitychange', () => { if (!document.hidden) caricaLive(); });
+setInterval(() => liveStato(), 30000);
 
 // ---------------- Offline ----------------
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
