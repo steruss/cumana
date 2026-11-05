@@ -2,7 +2,7 @@
 // Gli orari stanno in data.js; la grafica in index.html.
 "use strict";
 // Versione dell'app: si aumenta a ogni modifica (e va uguale in sw.js)
-const VERSIONE = '2.7';
+const VERSIONE = '2.8';
 const O = window.ORARI;
 const $ = id => document.getElementById(id);
 const hm = m => { m = ((m % 1440) + 1440) % 1440; return String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0'); };
@@ -214,6 +214,7 @@ function liveStato(msg){
   const bar = $('livebar'), eta = liveEta();
   bar.classList.toggle('fresh', liveOk()); bar.classList.toggle('old', !!LIVE && !liveOk());
   if (msg){ $('livestato').textContent = msg; return; }
+  if (inCorso && !liveOk()){ $('livestato').textContent = '📡 Sto aggiornando i ritardi… (circa 1 minuto)'; return; }
   if (!LIVE){ $('livestato').textContent = '📡 Ritardi EAV non disponibili'; return; }
   if (!LIVE.ok){ $('livestato').textContent = '📡 EAV non risponde, uso solo gli orari'; return; }
   const ora = new Date(LIVE.agg).toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit', timeZone:'Europe/Rome'});
