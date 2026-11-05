@@ -1,4 +1,4 @@
-name: Ritardi EAV
+name: Ritardi EAV Cumana
 on:
   workflow_dispatch:          # il pulsante "Aggiorna ritardi" nell'app
   schedule:
