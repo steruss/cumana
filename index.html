@@ -42,6 +42,13 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .board{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
 .board h2{margin:0;padding:10px 14px;font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;background:var(--accent);color:var(--on-accent)}
 .leg{padding:14px;display:flex;flex-direction:column;gap:6px;border-bottom:1px solid var(--line)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chips button{font-family:var(--mono);font-weight:700}
+.chips button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent)}
+.res{display:flex;flex-direction:column;gap:4px}
+.res .row{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+.res .tt{font-family:var(--mono);font-weight:700;font-size:2rem;line-height:1;font-variant-numeric:tabular-nums}
+.res .soft{font-family:var(--mono);color:var(--muted);font-size:.95rem}
 .transit{background:var(--warn-bg);border-bottom:2px solid var(--amber)}
 .transit .row{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
 .transit .tt{font-family:var(--mono);font-weight:700;font-size:1.8rem;line-height:1;font-variant-numeric:tabular-nums}
@@ -100,8 +107,10 @@ footer{font-size:.78rem;color:var(--muted);line-height:1.5}
   <div class="warn" id="scaduto" hidden></div>
 
   <div class="tabs" role="tablist">
-    <button type="button" role="tab" id="tab-andata" data-tab="andata" aria-selected="true">➜ Andata<small>vado a lavoro</small></button>
-    <button type="button" role="tab" id="tab-ritorno" data-tab="ritorno" aria-selected="false">⌂ Ritorno<small>torno a casa</small></button>
+    <button type="button" role="tab" id="tab-andata" data-tab="andata" aria-selected="true">➜ Andata<small>devo partire</small></button>
+    <button type="button" role="tab" id="tab-andata-corso" data-tab="andata-corso" aria-selected="false">🚃 Andata in corso<small>sono già in viaggio</small></button>
+    <button type="button" role="tab" id="tab-ritorno" data-tab="ritorno" aria-selected="false">⌂ Uscita<small>devo uscire</small></button>
+    <button type="button" role="tab" id="tab-ritorno-corso" data-tab="ritorno-corso" aria-selected="false">🚆 Uscita in corso<small>sono già in viaggio</small></button>
   </div>
 
   <div class="livebar" id="livebar">
@@ -117,7 +126,6 @@ footer{font-size:.78rem;color:var(--muted);line-height:1.5}
   <!-- ===================== ANDATA ===================== -->
   <section class="board" id="andata" role="tabpanel">
     <h2>Andata · vado a lavoro</h2>
-    <div class="leg transit" id="aT" hidden></div>
     <div class="leg">
       <div class="route">Cumana · La Trencia → Montesanto</div>
       <div class="big"><span class="time" id="a1t">--:--</span><span class="in" id="a1i"></span></div>
@@ -138,10 +146,47 @@ footer{font-size:.78rem;color:var(--muted);line-height:1.5}
     </div>
   </section>
 
+  <!-- ===================== ANDATA IN CORSO ===================== -->
+  <section class="board" id="andata-corso" role="tabpanel" hidden>
+    <h2>Andata in corso · dove sei?</h2>
+    <div class="leg">
+      <div class="route">🚃 Sono sulla Cumana delle…</div>
+      <div class="chips" id="acC"></div>
+      <div class="res" id="acCr"></div>
+    </div>
+    <div class="leg">
+      <div class="route">📍 Sono a Montesanto</div>
+      <div class="res" id="acM"></div>
+    </div>
+    <div class="leg">
+      <div class="route">🚆 Sono sulla Linea 2 delle…</div>
+      <div class="chips" id="acL"></div>
+      <div class="res" id="acLr"></div>
+    </div>
+  </section>
+
+  <!-- ===================== USCITA IN CORSO ===================== -->
+  <section class="board" id="ritorno-corso" role="tabpanel" hidden>
+    <h2>Uscita in corso · dove sei?</h2>
+    <div class="leg">
+      <div class="route">🚆 Sono sulla Linea 2 delle…</div>
+      <div class="chips" id="rcL"></div>
+      <div class="res" id="rcLr"></div>
+    </div>
+    <div class="leg">
+      <div class="route">📍 Sono a Montesanto</div>
+      <div class="res" id="rcM"></div>
+    </div>
+    <div class="leg">
+      <div class="route">🚃 Sono sulla Cumana delle…</div>
+      <div class="chips" id="rcC"></div>
+      <div class="res" id="rcCr"></div>
+    </div>
+  </section>
+
   <!-- ===================== RITORNO ===================== -->
   <section class="board" id="ritorno" role="tabpanel" hidden>
-    <h2>Ritorno · torno a casa</h2>
-    <div class="leg transit" id="rT" hidden></div>
+    <h2>Uscita · torno a casa</h2>
     <div class="leg">
       <div class="route">Linea 2 · Garibaldi → Montesanto <span class="tag" id="r2tag">stima</span></div>
       <div class="big"><span class="time" id="r2t">--:--</span><span class="in" id="r2i"></span></div>
@@ -432,49 +477,89 @@ $('toksave').addEventListener('click', () => {
   $('tok').value = ''; $('tokbox').hidden = true; chiediAggiornamento();
 });
 
-// ---------------- Sei già in viaggio? ----------------
-// Si accende da solo quando c'è un treno su cui potresti essere seduto adesso.
-function renderInViaggio(now, day){
-  const t = tipo(day);
-  // ANDATA: Cumane partite da La Trencia negli ultimi 30 minuti (ritardi compresi)
-  const sulla = O.cumanaAndata.filter(c => c.dep <= now && c.dep >= now - 30).reverse().slice(0,2);
-  let h = '';
-  sulla.forEach(c => {
-    const lr = liveRit('montesanto_a', c.arr);          // ritardo vero all'arrivo a Montesanto
-    const l = l2Andata(c.arr + (lr ? lr.rit : 0) + X, t);
-    if (!l) return;
-    const [p, ...alt] = l.treni;
-    const rt = lr ? (lr.rit ? ` <span class="rit">+${lr.rit}′</span> arriva ${hm(c.arr + lr.rit)}` : ' <span class="rit zero">in orario</span>') : '';
-    h += `<span class="q">🚃 Sei sulla Cumana delle ${hm(c.dep)}?${rt}</span>
-      <div class="row"><span>Linea 2 delle</span><span class="tt">${(l.stima?'~':'') + hm(p.dep)}</span><span>· al lavoro ${hm(p.lav)}</span></div>
-      ${alt.length ? `<span class="note">${lr ? 'Se ritarda ancora' : 'Se la Cumana è in ritardo'}: ${alt.slice(0,3).map(x=>hm(x.dep)).join(' · ')}</span>` : ''}<hr>`;
-  });
-  if (h){
-    const l = l2Andata(now + 3, t);   // già a Montesanto: 3 min per scendere al binario
-    h += l ? `<span class="q">📍 Già a Montesanto?</span><div class="row"><span>Prossime Linea 2:</span><span class="tt">${hm(l.treni[0].dep)}</span><span class="next">${l.treni.slice(1,3).map(x=>hm(x.dep)).join(' · ')}</span></div>` : '';
-  }
-  $('aT').innerHTML = h; $('aT').hidden = !h;
+// ---------------- Tab "in corso": scegli il treno su cui sei ----------------
+const scelto = {};   // treno scelto per ogni gruppo (null = il più recente)
+function chips(id, items, now){
+  const box = $(id);
+  if (!items.length){ box.innerHTML = ''; return null; }
+  let sel = items.find(x => x.k === scelto[id]) || items[0];
+  box.innerHTML = items.map(x => `<button type="button" data-k="${x.k}" aria-pressed="${x===sel}">${x.lbl}</button>`).join('');
+  return sel;
+}
+['acC','acL','rcL','rcC'].forEach(id => $(id).addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return; scelto[id] = +b.dataset.k; render(true);
+}));
+const nessuno = msg => `<span class="note">${msg}</span>`;
+const ritTxt = lr => lr ? (lr.rit ? ` <span class="rit">+${lr.rit}′</span>` : ' <span class="rit zero">in orario</span>') : '';
 
-  // RITORNO: Linea 2 partite da Garibaldi negli ultimi 15 minuti
-  const Lr = O.linea2[t].ritorno;
-  let r = '';
-  if (Lr){
-    const sul = Lr.map(x=>({g:x[0]+x[1]-G, ms:x[0]+x[1]})).filter(x => x.g <= now && x.g >= now - 15).reverse().slice(0,2);
-    const vista = new Set();
-    sul.forEach(x => {
-      const cs = O.cumanaRitorno.filter(c => c.dep >= x.ms + X);
-      if (!cs.length || vista.has(cs[0].dep)) return;
-      vista.add(cs[0].dep);
-      r += `<span class="q">🚆 Sei sulla Linea 2 delle ${hm(x.g)}?</span>
-        <div class="row"><span>Cumana delle</span><span class="tt">${hm(cs[0].dep)}</span><span>· a casa ${hm(cs[0].arr + C)}</span></div>
-        ${cs[1] ? `<span class="note">Se la Linea 2 è in ritardo: ${hm(cs[1].dep)}</span>` : ''}<hr>`;
-    });
-    if (r){
-      const cs = O.cumanaRitorno.filter(c => c.dep >= now + 3);
-      if (cs.length) r += `<span class="q">📍 Già a Montesanto?</span><div class="row"><span>Prossima Cumana:</span><span class="tt">${hm(cs[0].dep)}</span><span class="next">${cs.slice(1,3).map(c=>hm(c.dep)).join(' · ')}</span></div>`;
-    }
-  }
-  $('rT').innerHTML = r; $('rT').hidden = !r;
+function renderCorso(now, day){
+  const t = tipo(day);
+
+  // ===== ANDATA IN CORSO =====
+  // 1) Sulla Cumana: partite da La Trencia negli ultimi 40 minuti
+  const cA = O.cumanaAndata.filter(c => c.dep <= now && c.dep >= now - 40).reverse()
+    .map(c => ({k:c.dep, lbl:hm(c.dep), c}));
+  let sel = chips('acC', cA, now);
+  if (sel){
+    const c = sel.c, lr = liveRit('montesanto_a', c.arr), arr = c.arr + (lr ? lr.rit : 0);
+    const l = l2Andata(arr + X, t);
+    $('acCr').innerHTML = `<span>Arrivo a Montesanto alle <b>${hm(arr)}</b>${ritTxt(lr)}</span>` + (l
+      ? `<div class="row"><span>Prendi la Linea 2 delle</span><span class="tt">${hm(l.treni[0].dep)}</span></div>
+         <span>Al lavoro alle <b>${hm(l.treni[0].lav)}</b></span>
+         ${l.treni.length>1 ? `<span class="soft">Se perdi quella: ${l.treni.slice(1,4).map(x=>hm(x.dep)).join(' · ')}</span>` : ''}`
+      : nessuno('Linea 2 già chiusa.'));
+  } else $('acCr').innerHTML = nessuno('Nessuna Cumana partita da La Trencia negli ultimi 40 minuti.');
+
+  // 2) A Montesanto: prossime Linea 2 (3 min per arrivare al binario)
+  const lm = l2Andata(now + 3, t);
+  $('acM').innerHTML = lm
+    ? `<div class="row"><span>Prossima Linea 2</span><span class="tt">${hm(lm.treni[0].dep)}</span><span>${txtTra(lm.treni[0].dep - now)}</span></div>
+       <span>Al lavoro alle <b>${hm(lm.treni[0].lav)}</b></span>
+       <span class="soft">Poi: ${lm.treni.slice(1,4).map(x=>hm(x.dep)).join(' · ')}</span>`
+    : nessuno('Linea 2 chiusa a quest\'ora.');
+
+  // 3) Sulla Linea 2: partite da Montesanto negli ultimi 15 minuti
+  const La = (O.linea2[t].andata || []).filter(x => x[0] <= now && x[0] >= now - 15).reverse()
+    .map(x => ({k:x[0], lbl:hm(x[0]), dep:x[0]}));
+  sel = chips('acL', La, now);
+  $('acLr').innerHTML = sel
+    ? `<span>A Garibaldi alle <b>${hm(sel.dep + G)}</b></span><div class="row"><span>Al lavoro alle</span><span class="tt">${hm(sel.dep + G + W)}</span></div>`
+    : nessuno('Nessuna Linea 2 partita da Montesanto negli ultimi 15 minuti.');
+
+  // ===== USCITA IN CORSO =====
+  // 1) Sulla Linea 2: partite da Garibaldi negli ultimi 20 minuti
+  const Lr = (O.linea2[t].ritorno || []).map(x => ({g:x[0]+x[1]-G, ms:x[0]+x[1]})).filter(x => x.g <= now && x.g >= now - 20).reverse()
+    .map(x => ({k:x.g, lbl:hm(x.g), x}));
+  sel = chips('rcL', Lr, now);
+  if (sel){
+    const cs = O.cumanaRitorno.filter(c => c.dep >= sel.x.ms + X);
+    if (cs.length){
+      const lr = liveRit('montesanto_p', cs[0].dep), rit = lr ? lr.rit : 0;
+      $('rcLr').innerHTML = `<span>Arrivo a Montesanto alle <b>${hm(sel.x.ms)}</b></span>
+        <div class="row"><span>Prendi la Cumana delle</span><span class="tt">${hm(cs[0].dep)}</span>${ritTxt(lr)}</div>
+        <span>A casa alle <b>${hm(cs[0].arr + rit + C)}</b></span>
+        ${cs[1] ? `<span class="soft">Se perdi quella: ${cs.slice(1,3).map(c=>hm(c.dep)).join(' · ')}</span>` : ''}`;
+    } else $('rcLr').innerHTML = nessuno('Nessuna Cumana utile stasera.');
+  } else $('rcLr').innerHTML = nessuno('Nessuna Linea 2 partita da Garibaldi negli ultimi 20 minuti.');
+
+  // 2) A Montesanto: prossime Cumane
+  const cm = O.cumanaRitorno.filter(c => c.dep >= now + 3);
+  if (cm.length){
+    const lr = liveRit('montesanto_p', cm[0].dep), rit = lr ? lr.rit : 0;
+    $('rcM').innerHTML = `<div class="row"><span>Prossima Cumana</span><span class="tt">${hm(cm[0].dep)}</span>${ritTxt(lr)}<span>${txtTra(cm[0].dep + rit - now)}</span></div>
+      <span>A casa alle <b>${hm(cm[0].arr + rit + C)}</b></span>
+      ${cm[1] ? `<span class="soft">Poi: ${cm.slice(1,3).map(c=>hm(c.dep)).join(' · ')}</span>` : ''}`;
+  } else $('rcM').innerHTML = nessuno('Ultima Cumana da Montesanto alle 21:36.');
+
+  // 3) Sulla Cumana: partite da Montesanto negli ultimi 30 minuti
+  const cR = O.cumanaRitorno.filter(c => c.dep <= now && c.dep >= now - 30).reverse()
+    .map(c => ({k:c.dep, lbl:hm(c.dep), c}));
+  sel = chips('rcC', cR, now);
+  if (sel){
+    const lr = liveRit('montesanto_p', sel.c.dep), rit = lr ? lr.rit : 0;
+    $('rcCr').innerHTML = `<span>Arrivo a La Trencia alle <b>${hm(sel.c.arr + rit)}</b>${ritTxt(lr)}</span>
+      <div class="row"><span>A casa alle</span><span class="tt">${hm(sel.c.arr + rit + C)}</span></div>`;
+  } else $('rcCr').innerHTML = nessuno('Nessuna Cumana partita da Montesanto negli ultimi 30 minuti.');
 }
 
 // ---------------- Stato e simulazione ----------------
@@ -494,7 +579,7 @@ function render(force){
   lastKey = key;
   renderAndata(now, day);
   renderRitorno(now, day);
-  renderInViaggio(now, day);
+  renderCorso(now, day);
   const sc = O.scadenza.split('-').map(Number), oggi = t.y*10000 + t.mo*100 + t.d;
   const sca = $('scaduto'); sca.hidden = oggi < sc[0]*10000 + sc[1]*100 + sc[2];
   sca.textContent = `⚠️ Gli orari sono stati controllati il ${O.controllati} e potrebbero essere cambiati. Rifai le simulazioni su Lefrecce e aggiorna data.js.`;
@@ -543,16 +628,18 @@ O.turni.filter(t=>!t.auto).forEach(t => {
 })();
 
 // ---------------- Tab ----------------
+const TABS = ['andata','andata-corso','ritorno','ritorno-corso'];
 function showTab(name){
-  ['andata','ritorno'].forEach(n => { $(n).hidden = n !== name; $('tab-'+n).setAttribute('aria-selected', n === name); });
+  TABS.forEach(n => { $(n).hidden = n !== name; $('tab-'+n).setAttribute('aria-selected', n === name); });
   try { localStorage.setItem('tab', name); } catch(e){}
   if (location.hash !== '#'+name) history.replaceState(null, '', '#'+name);
 }
 document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
-window.addEventListener('hashchange', () => { const h = location.hash.slice(1); if (h==='andata' || h==='ritorno') showTab(h); });
+window.addEventListener('hashchange', () => { const h = location.hash.slice(1); if (TABS.includes(h)) showTab(h); });
 let start = location.hash.slice(1);
-if (start!=='andata' && start!=='ritorno'){ try { start = localStorage.getItem('tab'); } catch(e){} }
-showTab(start === 'ritorno' ? 'ritorno' : 'andata');
+if (!TABS.includes(start)){ try { start = localStorage.getItem('tab'); } catch(e){} }
+showTab(TABS.includes(start) ? start : 'andata');
+window.scrollTo(0,0); setTimeout(() => window.scrollTo(0,0), 50);   // il #tab nel link non deve far scorrere la pagina
 
 // ---------------- Footer dai dati (si aggiorna da solo) ----------------
 $('foot').textContent = `Orari controllati il ${O.controllati}. Cumana: PDF EAV, un treno ogni 24 minuti (stesso orario tutti i giorni). `
