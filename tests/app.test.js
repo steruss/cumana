@@ -82,9 +82,9 @@ test('Corsa "al volo": giovedì 15:00 sicura 15:39, al volo 15:32 con 5 minuti',
 });
 
 // ---------------- USCITA ----------------
-test('Uscita alle 07:00 (fine notte): Linea 2 07:24, Cumana 08:00, a casa 08:25', async () => {
+test('Uscita alle 07:00 (fine notte): Linea 2 07:26, Cumana 08:00, a casa 08:25', async () => {
   const a = await apri('2026-11-05T06:00:00Z');
-  assert.equal(a.testo('r2t'), '07:24');
+  assert.equal(a.testo('r2t'), '07:26');               // partenza vera da Garibaldi (arriva a Montesanto 07:34)
   assert.equal(a.testo('r1t'), '08:00');
   assert.equal(a.testo('gR'), '08:25');                // 08:15 + 10 min a piedi
   a.chiudi();
@@ -163,10 +163,11 @@ test('Andata in corso 08:35: sulla Cumana delle 08:24 prendi la Linea 2 delle 08
   a.chiudi();
 });
 
-test('Uscita in corso, sono a Garibaldi alle 15:47: Linea 2 15:54, Cumana 16:24, a casa 16:49', async () => {
+test('Uscita in corso, sono a Garibaldi alle 15:47: come il tabellone (15:56, poi 16:04 16:11 16:19)', async () => {
   const a = await apri('2026-11-05T14:47:00Z', { hash: '#ritorno-corso' });
   const r = a.testo('rcG');
-  assert.match(r, /Prossima Linea 2 ?15:54/);
+  assert.match(r, /Prossima Linea 2 ?15:56/);          // tabellone di P.zza Garibaldi del 5/11 alle 15:48
+  assert.match(r, /Poi: 16:04 · 16:11 · 16:19/);
   assert.match(r, /Cumana delle 16:24/);
   assert.match(r, /a casa alle 16:49/);
   assert.match(r, /Copia 20964/);

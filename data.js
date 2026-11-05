@@ -12,6 +12,8 @@ window.ORARI = {
   casaTrencia: 10,     // casa <-> stazione La Trencia
   cambioMontesanto: 7, // Cumana <-> Linea 2 a Montesanto
   montesantoGaribaldi: 10, // 7 di treno + 3 per scale e binario
+  treniGaribaldiMontesanto: 8, // minuti di treno veri (tabellone di P.zza Garibaldi, 5/11/2026: 20964 parte 15:56, arriva 16:04)
+  binario: 3,          // minuti per scendere al binario della Linea 2
   garibaldiLavoro: 20, // Piazza Garibaldi <-> lavoro
 
   // ---- Turni: inizio in minuti ----

@@ -2,13 +2,15 @@
 // Gli orari stanno in data.js; la grafica in index.html.
 "use strict";
 // Versione dell'app: si aumenta a ogni modifica (e va uguale in sw.js)
-const VERSIONE = '2.11';
+const VERSIONE = '2.12';
 const O = window.ORARI;
 const $ = id => document.getElementById(id);
 const hm = m => { m = ((m % 1440) + 1440) % 1440; return String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0'); };
 const DOW = ['domenica','lunedì','martedì','mercoledì','giovedì','venerdì','sabato'];
 const MESI = ['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];
 const C = O.casaTrencia, X = O.cambioMontesanto, G = O.montesantoGaribaldi, W = O.garibaldiLavoro;
+// Uscita: g = partenza VERA da P.zza Garibaldi (come sul tabellone) = arrivo a Montesanto - minuti di treno
+const TG = O.treniGaribaldiMontesanto, B = O.binario;
 
 // ---------------- Date e festivi ----------------
 function romeToday(){
@@ -57,16 +59,16 @@ function andata(now, day, dom){
 function l2Ritorno(pronto, t){
   const L = O.linea2[t].ritorno, S = O.linea2Servizio;
   if (L){
-    const all = L.map(x=>({g:x[0]+x[1]-G, ms:x[0]+x[1], n:x[2]})).filter(x=>x.g>=pronto);
+    const all = L.map(x=>({g:x[0]+x[1]-TG, ms:x[0]+x[1], n:x[2]})).filter(x=>x.g>=pronto);
     return all.length ? {treni:all, stima:false} : null;
   }
   if (pronto > S.ultimaGaribaldi) return null;
   const hw = O.frequenzaStima[t], g = Math.max(pronto, S.primaGaribaldi);
-  return {treni:[{g, ms:g+hw+G}], stima:true, hw};
+  return {treni:[{g, ms:g+hw+TG}], stima:true, hw};
 }
 function ritorno(now, day, dom){
   const t = tipo(day);
-  const l = l2Ritorno(now + W, t); if (!l) return null;
+  const l = l2Ritorno(now + W + B, t); if (!l) return null;   // a piedi fino a Garibaldi + scendere al binario
   const tutte = O.cumanaRitorno.filter(c=>c.dep >= l.treni[0].ms + X);
   const b = tutte.filter(c => dom || !soppressa('montesanto_p', c.dep));  // salto le soppresse
   if (!b.length) return null;
@@ -74,8 +76,8 @@ function ritorno(now, day, dom){
   const cum = b[0];
   // ultimo momento utile per uscire dal lavoro e prendere comunque quella Cumana
   let esci;
-  if (!l.stima){ const ult = l.treni.filter(x=>x.ms + X <= cum.dep).pop(); esci = ult.g - W; }
-  else esci = cum.dep - X - G - l.hw - W;
+  if (!l.stima){ const ult = l.treni.filter(x=>x.ms + X <= cum.dep).pop(); esci = ult.g - B - W; }
+  else esci = cum.dep - X - TG - l.hw - B - W;
   return {l2:l.treni[0], altri:l.treni.slice(1,4), stima:l.stima, hw:l.hw, cum, poi:b.slice(1,4), esci:Math.max(esci, now), casa:cum.arr + C, tipo:t, sopp};
 }
 
@@ -94,7 +96,7 @@ function proposteTurno(tu, dd){
   const and = O.cumanaAndata.map(c=>catenaAndata(c,t)).filter(x=>x.l2 && x.l2.lav <= tu.inizio).slice(-3).reverse();
   // ritorno: dalla fine del turno, prime 3 Cumane diverse raggiungibili
   const fineDay = tu.fine < tu.inizio ? addDays(dd.y,dd.mo,dd.d,1) : dd, tf = tipo(fineDay);
-  const rit = [], seen = new Set(), l = l2Ritorno(tu.fine + W, tf);
+  const rit = [], seen = new Set(), l = l2Ritorno(tu.fine + W + B, tf);
   if (l) for (const tr of l.treni){
     const c = O.cumanaRitorno.find(c=>c.dep >= tr.ms + X); if (!c || seen.has(c.dep)) continue;
     seen.add(c.dep);
@@ -160,7 +162,7 @@ function renderTurni(now){
   if (!p.rit.length) h += `<span class="bad">⚠️ Dopo le ${hm(tu.fine)} non ci sono più treni utili${tu.auto?' (per questo vai in auto 😉)':''}.</span>`;
   p.rit.forEach((x,i) => {
     h += `<div class="opt"><span class="k">${hm(x.casa)}</span><span>a casa${i===0?' <span class="best">la più veloce</span>':''}</span>
-      <span></span><span class="note">esci entro ${hm(x.l2.g - W)} · Linea 2 ${hm(x.l2.g)} · Cumana ${hm(x.cum.dep)}</span></div>`;
+      <span></span><span class="note">esci entro ${hm(x.l2.g - B - W)} · Linea 2 ${hm(x.l2.g)} · Cumana ${hm(x.cum.dep)}</span></div>`;
   });
   box.innerHTML = h + '</div>';
 }
@@ -421,7 +423,7 @@ function renderCorso(now, day){
   } else $('rcG').innerHTML = nessuno('Linea 2 chiusa a quest\'ora.');
 
   // 1) Sulla Linea 2: partite da Garibaldi negli ultimi 20 minuti
-  const Lr = (O.linea2[t].ritorno || []).map(x => ({g:x[0]+x[1]-G, ms:x[0]+x[1], n:x[2]})).filter(x => x.g <= now && x.g >= now - 20).reverse()
+  const Lr = (O.linea2[t].ritorno || []).map(x => ({g:x[0]+x[1]-TG, ms:x[0]+x[1], n:x[2]})).filter(x => x.g <= now && x.g >= now - 20).reverse()
     .map(x => ({k:x.g, lbl:hm(x.g), x}));
   sel = chips('rcL', Lr, now);
   if (sel){
