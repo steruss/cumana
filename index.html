@@ -93,6 +93,8 @@ details.sim summary{cursor:pointer;color:var(--muted);font-weight:600}
 .tokbox input{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
 .rit{font-family:var(--mono);font-weight:700;font-size:.95rem;color:var(--on-accent);background:var(--bad);border-radius:5px;padding:2px 7px}
 .rit.zero{background:var(--ok)}
+.vt{display:inline-flex;flex-direction:column;align-self:flex-start;margin-top:4px;padding:6px 10px;border-radius:6px;border:1px solid var(--accent);color:var(--accent);font-size:.85rem;font-weight:700;text-decoration:none}
+.vt small{font-weight:400;font-size:.75rem;color:var(--muted)}
 .livebtn{align-self:flex-start;margin-top:4px;padding:6px 10px;border-radius:6px;border:1px solid var(--amber);color:var(--amber);font-size:.85rem;font-weight:700;text-decoration:none}
 .live{display:block;text-align:center;padding:12px;border-radius:10px;border:1px solid var(--accent);color:var(--accent);font-weight:700;text-decoration:none}
 footer{font-size:.78rem;color:var(--muted);line-height:1.5}
@@ -140,6 +142,7 @@ footer{font-size:.78rem;color:var(--muted);line-height:1.5}
       <div class="route">Linea 2 · Montesanto → Garibaldi <span class="tag" id="a2tag">stima</span></div>
       <div class="big"><span class="time" id="a2t">--:--</span><span class="in" id="a2i"></span></div>
       <div class="note" id="a2n"></div>
+      <div id="a2vt"></div>
       <div class="next" id="a2x"></div>
       <div class="volo" id="a2v" hidden></div>
     </div>
@@ -194,6 +197,7 @@ footer{font-size:.78rem;color:var(--muted);line-height:1.5}
       <div class="route">Linea 2 · Garibaldi → Montesanto <span class="tag" id="r2tag">stima</span></div>
       <div class="big"><span class="time" id="r2t">--:--</span><span class="in" id="r2i"></span></div>
       <div class="note" id="r2n"></div>
+      <div id="r2vt"></div>
       <div class="next" id="r2x"></div>
     </div>
     <div class="leg">
@@ -277,7 +281,7 @@ const TIPO_LBL = {feriale:'feriale', sabato:'sabato', festivo:'festivo'};
 // Linea 2 andata: primo treno da Montesanto dopo "pronto" (in minuti)
 function l2Andata(pronto, t){
   const L = O.linea2[t].andata, S = O.linea2Servizio;
-  if (L){ const all = L.filter(x=>x[0]>=pronto).map(x=>({dep:x[0], lav:x[0]+G+W})); return all.length ? {treni:all, stima:false} : null; }
+  if (L){ const all = L.filter(x=>x[0]>=pronto).map(x=>({dep:x[0], lav:x[0]+G+W, n:x[2]})); return all.length ? {treni:all, stima:false} : null; }
   if (pronto > S.ultimaMontesanto) return null;
   const hw = O.frequenzaStima[t], dep = Math.max(pronto, S.primaMontesanto) + hw; // attesa peggiore
   return {treni:[{dep, lav:dep+G+W}], stima:true, hw};
@@ -299,7 +303,7 @@ function andata(now, day, dom){
 function l2Ritorno(pronto, t){
   const L = O.linea2[t].ritorno, S = O.linea2Servizio;
   if (L){
-    const all = L.map(x=>({g:x[0]+x[1]-G, ms:x[0]+x[1]})).filter(x=>x.g>=pronto);
+    const all = L.map(x=>({g:x[0]+x[1]-G, ms:x[0]+x[1], n:x[2]})).filter(x=>x.g>=pronto);
     return all.length ? {treni:all, stima:false} : null;
   }
   if (pronto > S.ultimaGaribaldi) return null;
@@ -367,6 +371,7 @@ function renderAndata(now, day){
       ? `Orario ${TIPO_LBL[r.tipo]} non disponibile: conto un treno ogni ${r.hw} min con l'attesa peggiore.`
       : `A Garibaldi alle ${hm(r.l2.dep+G)}, al lavoro verso le ${hm(r.l2.lav)}`;
     $('a2x').textContent = r.altri && r.altri.length ? 'Poi: ' + r.altri.map(x=>hm(x.dep)).join(' · ') : '';
+    $('a2vt').innerHTML = vtBtn(r.l2.n);
     const v = r.stima ? null : voloL2(r.c.arr, r.l2.dep, r.tipo);
     $('a2v').hidden = !v; if (v) $('a2v').innerHTML = voloTxt(v, 'Linea 2', `al lavoro ${hm(v.lav)}`);
     $('gW').textContent = hm(r.l2.lav);
@@ -414,6 +419,7 @@ function renderRitorno(now, day){
   $('r2n').textContent = (domani ? '🌙 Stasera non ci sono più coincidenze: ecco la prima di domani. ' : `Uscendo dal lavoro adesso (${W} min a piedi). `)
     + (r.stima ? `Orario ${TIPO_LBL[r.tipo]} non disponibile: conto l'attesa peggiore (un treno ogni ${r.hw} min).` : `Arrivo a Montesanto alle ${hm(r.l2.ms)}`);
   $('r2x').textContent = r.altri.length ? 'Poi: ' + r.altri.map(x=>hm(x.g)).join(' · ') : '';
+  $('r2vt').innerHTML = vtBtn(r.l2.n);
   $('r1t').textContent = hm(r.cum.dep); setIn($('r1i'), r.cum.dep - n);
   badge($('r1i'), domani ? null : liveRit('montesanto_p', r.cum.dep));
   $('r1n').textContent = `Arrivo a La Trencia alle ${hm(r.cum.arr)}` + ((r.sopp||[]).length ? ` · ❌ ${r.sopp.map(c=>hm(c.dep)).join(', ')} SOPPRESSA` : '');
@@ -493,6 +499,15 @@ $('toksave').addEventListener('click', () => {
   $('tok').value = ''; $('tokbox').hidden = true; chiediAggiornamento();
 });
 
+// ---------------- Ritardo Linea 2: copia il numero e apre ViaggiaTreno ----------------
+const VT_URL = 'http://www.viaggiatreno.it/infomobilitamobile/pages/cercaTreno/cercaTreno.jsp';
+const vtBtn = n => n ? `<a class="vt" href="${VT_URL}" target="_blank" rel="noopener" data-n="${n}">📡 Ritardo treno ${n}<small>copio il numero, tu incollalo</small></a>` : '';
+document.addEventListener('click', e => {
+  const a = e.target.closest && e.target.closest('a.vt'); if (!a) return;
+  try { navigator.clipboard.writeText(a.dataset.n).catch(()=>{}); } catch(err){}
+  a.querySelector('small').textContent = `✅ ${a.dataset.n} copiato: incollalo e premi Cerca`;
+});
+
 // ---------------- "Al volo": la corsa prima di quella sicura ----------------
 // Linea 2 che parte dopo l'arrivo a Montesanto ma con meno dei 7 minuti di cambio
 function voloL2(arr, sicura, t){
@@ -537,7 +552,7 @@ function renderCorso(now, day){
     const l = l2Andata(arr + X, t);
     $('acCr').innerHTML = `<span>Arrivo a Montesanto alle <b>${hm(arr)}</b>${ritTxt(lr)}</span>` + (l
       ? `<div class="row"><span>Prendi la Linea 2 delle</span><span class="tt">${hm(l.treni[0].dep)}</span></div>
-         <span>Al lavoro alle <b>${hm(l.treni[0].lav)}</b></span>
+         <span>Al lavoro alle <b>${hm(l.treni[0].lav)}</b></span>${vtBtn(l.treni[0].n)}
          ${l.treni.length>1 ? `<span class="soft">Se perdi quella: ${l.treni.slice(1,4).map(x=>hm(x.dep)).join(' · ')}</span>` : ''}
          ${(v => v ? `<span class="volo">${voloTxt(v, 'Linea 2', `al lavoro ${hm(v.lav)}`)}</span>` : '')(l.stima ? null : voloL2(arr, l.treni[0].dep, t))}`
       : nessuno('Linea 2 già chiusa.'));
@@ -547,28 +562,28 @@ function renderCorso(now, day){
   const lm = l2Andata(now + 3, t);
   $('acM').innerHTML = lm
     ? `<div class="row"><span>Prossima Linea 2</span><span class="tt">${hm(lm.treni[0].dep)}</span><span>${txtTra(lm.treni[0].dep - now)}</span></div>
-       <span>Al lavoro alle <b>${hm(lm.treni[0].lav)}</b></span>
+       <span>Al lavoro alle <b>${hm(lm.treni[0].lav)}</b></span>${vtBtn(lm.treni[0].n)}
        <span class="soft">Poi: ${lm.treni.slice(1,4).map(x=>hm(x.dep)).join(' · ')}</span>`
     : nessuno('Linea 2 chiusa a quest\'ora.');
 
   // 3) Sulla Linea 2: partite da Montesanto negli ultimi 15 minuti
   const La = (O.linea2[t].andata || []).filter(x => x[0] <= now && x[0] >= now - 15).reverse()
-    .map(x => ({k:x[0], lbl:hm(x[0]), dep:x[0]}));
+    .map(x => ({k:x[0], lbl:hm(x[0]), dep:x[0], n:x[2]}));
   sel = chips('acL', La, now);
   $('acLr').innerHTML = sel
-    ? `<span>A Garibaldi alle <b>${hm(sel.dep + G)}</b></span><div class="row"><span>Al lavoro alle</span><span class="tt">${hm(sel.dep + G + W)}</span></div>`
+    ? `<span>A Garibaldi alle <b>${hm(sel.dep + G)}</b></span><div class="row"><span>Al lavoro alle</span><span class="tt">${hm(sel.dep + G + W)}</span></div>${vtBtn(sel.n)}`
     : nessuno('Nessuna Linea 2 partita da Montesanto negli ultimi 15 minuti.');
 
   // ===== USCITA IN CORSO =====
   // 1) Sulla Linea 2: partite da Garibaldi negli ultimi 20 minuti
-  const Lr = (O.linea2[t].ritorno || []).map(x => ({g:x[0]+x[1]-G, ms:x[0]+x[1]})).filter(x => x.g <= now && x.g >= now - 20).reverse()
+  const Lr = (O.linea2[t].ritorno || []).map(x => ({g:x[0]+x[1]-G, ms:x[0]+x[1], n:x[2]})).filter(x => x.g <= now && x.g >= now - 20).reverse()
     .map(x => ({k:x.g, lbl:hm(x.g), x}));
   sel = chips('rcL', Lr, now);
   if (sel){
     const cs = O.cumanaRitorno.filter(c => c.dep >= sel.x.ms + X && !soppressa('montesanto_p', c.dep));
     if (cs.length){
       const lr = liveRit('montesanto_p', cs[0].dep), rit = lr ? lr.rit : 0;
-      $('rcLr').innerHTML = `<span>Arrivo a Montesanto alle <b>${hm(sel.x.ms)}</b></span>
+      $('rcLr').innerHTML = `<span>Arrivo a Montesanto alle <b>${hm(sel.x.ms)}</b></span>${vtBtn(sel.x.n)}
         <div class="row"><span>Prendi la Cumana delle</span><span class="tt">${hm(cs[0].dep)}</span>${ritTxt(lr)}</div>
         <span>A casa alle <b>${hm(cs[0].arr + rit + C)}</b></span>
         ${cs[1] ? `<span class="soft">Se perdi quella: ${cs.slice(1,3).map(c=>hm(c.dep)).join(' · ')}</span>` : ''}
