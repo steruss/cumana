@@ -9,7 +9,7 @@ window.ORARI = {
   scadenza: "2026-12-13",
 
   // ---- Minuti a piedi e margini (tutti "sul sicuro") ----
-  casaTrencia: 8,      // casa <-> stazione La Trencia
+  casaTrencia: 10,     // casa <-> stazione La Trencia
   cambioMontesanto: 7, // Cumana <-> Linea 2 a Montesanto
   montesantoGaribaldi: 10, // 7 di treno + 3 per scale e binario
   garibaldiLavoro: 20, // Piazza Garibaldi <-> lavoro
