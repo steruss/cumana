@@ -72,6 +72,7 @@ details.sim{background:var(--panel);border:1px solid var(--line);border-radius:1
 details.sim summary{cursor:pointer;color:var(--muted);font-weight:600}
 .controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
 .controls input,.controls select{font:inherit;font-family:var(--mono);padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink)}
+.livebtn{align-self:flex-start;margin-top:4px;padding:6px 10px;border-radius:6px;border:1px solid var(--amber);color:var(--amber);font-size:.85rem;font-weight:700;text-decoration:none}
 .live{display:block;text-align:center;padding:12px;border-radius:10px;border:1px solid var(--accent);color:var(--accent);font-weight:700;text-decoration:none}
 footer{font-size:.78rem;color:var(--muted);line-height:1.5}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -100,6 +101,7 @@ footer{font-size:.78rem;color:var(--muted);line-height:1.5}
       <div class="note" id="a1n"></div>
       <div class="lost" id="a1l"></div>
       <div class="next" id="a1x"></div>
+      <a class="livebtn" href="https://orariotreni.eavsrl.it/teleindicatori/?stazione=823&amp;tipo=P" target="_blank" rel="noopener">📡 Ritardi live a La Trencia ↗</a>
     </div>
     <div class="leg">
       <div class="route">Linea 2 · Montesanto → Garibaldi <span class="tag" id="a2tag">stima</span></div>
@@ -127,6 +129,7 @@ footer{font-size:.78rem;color:var(--muted);line-height:1.5}
       <div class="big"><span class="time" id="r1t">--:--</span><span class="in" id="r1i"></span></div>
       <div class="note" id="r1n"></div>
       <div class="next" id="r1x"></div>
+      <a class="livebtn" href="https://orariotreni.eavsrl.it/teleindicatori/?stazione=801&amp;tipo=P" target="_blank" rel="noopener">📡 Ritardi live a Montesanto ↗</a>
     </div>
     <div class="goals">
       <div class="goal"><span class="lbl">Esci dal lavoro</span><span class="val" id="gL">--</span><span class="sub" id="gLs"></span></div>
@@ -137,7 +140,7 @@ footer{font-size:.78rem;color:var(--muted);line-height:1.5}
     </div>
   </section>
 
-  <a class="live" href="http://www.viaggiatreno.it/infomobilitamobile/pages/cercaTreno/cercaTreno.jsp" target="_blank" rel="noopener">Controlla ritardi e scioperi ↗</a>
+  <a class="live" href="http://www.viaggiatreno.it/infomobilitamobile/pages/cercaTreno/cercaTreno.jsp" target="_blank" rel="noopener">Ritardi Linea 2 (Trenitalia) ↗</a>
 
   <details class="sim" id="turnibox">
     <summary>Verifica turni</summary>
