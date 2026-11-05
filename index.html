@@ -467,8 +467,8 @@ async function chiediAggiornamento(){
   const prima = LIVE ? LIVE.agg : '';
   liveStato('📡 Chiedo a GitHub di controllare… (circa 1 minuto)');
   try {
-    const r = await fetch(DISPATCH_URL, {method:'POST', headers:{Authorization:'Bearer '+tk, Accept:'application/vnd.github+json'}, body:JSON.stringify({ref:'main'})});
-    if (r.status === 401 || r.status === 403 || r.status === 404){ liveStato('⚠️ Chiave GitHub non valida: inseriscila di nuovo'); $('tokbox').hidden = false; return; }
+    const r = await fetch(DISPATCH_URL, {method:'POST', headers:{Authorization:'Bearer '+tk, Accept:'application/vnd.github+json', 'Content-Type':'application/json'}, body:JSON.stringify({ref:'main'})});
+    if (!r.ok){ if (r.status !== 401 && r.status !== 403 && r.status !== 404){ liveStato(`⚠️ GitHub ha risposto ${r.status}, riprova`); return; } liveStato('⚠️ Chiave GitHub non valida: inseriscila di nuovo'); $('tokbox').hidden = false; return; }
   } catch(e){ liveStato('⚠️ Niente rete, riprova'); return; }
   for (let i=0; i<16; i++){            // controllo ogni 10 secondi per ~3 minuti
     await new Promise(ok => setTimeout(ok, 10000));
