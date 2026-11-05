@@ -93,7 +93,12 @@ details.sim summary{cursor:pointer;color:var(--muted);font-weight:600}
 .tokbox input{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
 .rit{font-family:var(--mono);font-weight:700;font-size:.95rem;color:var(--on-accent);background:var(--bad);border-radius:5px;padding:2px 7px}
 .rit.zero{background:var(--ok)}
-.vt{display:inline-flex;flex-direction:column;align-self:flex-start;margin-top:4px;padding:6px 10px;border-radius:6px;border:1px solid var(--accent);color:var(--accent);font-size:.85rem;font-weight:700;text-decoration:none}
+.vtbox{display:flex;flex-direction:column;gap:4px;margin-top:4px}
+.vtrow{display:flex;gap:8px;flex-wrap:wrap}
+.vtmsg{font-size:.78rem;color:var(--muted)}
+.vtcopy{font-size:.9rem}
+.l2box{display:flex;flex-direction:column;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.vt{display:inline-flex;align-items:center;align-self:flex-start;padding:6px 10px;border-radius:6px;border:1px solid var(--accent);color:var(--accent);font-size:.85rem;font-weight:700;text-decoration:none}
 .vt small{font-weight:400;font-size:.75rem;color:var(--muted)}
 .livebtn{align-self:flex-start;margin-top:4px;padding:6px 10px;border-radius:6px;border:1px solid var(--amber);color:var(--amber);font-size:.85rem;font-weight:700;text-decoration:none}
 .live small{display:block;font-weight:400;font-size:.75rem;color:var(--muted)}
@@ -218,7 +223,7 @@ footer{font-size:.78rem;color:var(--muted);line-height:1.5}
     </div>
   </section>
 
-  <a class="live" id="l2live" href="http://www.viaggiatreno.it/infomobilitamobile/pages/cercaTreno/cercaTreno.jsp" target="_blank" rel="noopener">📡 Ritardi Linea 2 (Trenitalia) ↗<small id="l2livesub"></small></a>
+  <div class="l2box" id="l2box"></div>
 
   <details class="sim" id="turnibox">
     <summary>Verifica turni</summary>
@@ -502,7 +507,10 @@ $('toksave').addEventListener('click', () => {
 
 // ---------------- Ritardo Linea 2: copia il numero e apre ViaggiaTreno ----------------
 const VT_URL = 'http://www.viaggiatreno.it/infomobilitamobile/pages/cercaTreno/cercaTreno.jsp';
-const vtBtn = n => n ? `<a class="vt" href="${VT_URL}" target="_blank" rel="noopener" data-n="${n}">📡 Ritardo treno ${n}<small>copio il numero, tu incollalo</small></a>` : '';
+const vtBtn = n => n ? `<div class="vtbox"><div class="vtrow">
+  <button type="button" class="vtcopy" data-copy="${n}">📋 Copia ${n}</button>
+  <a class="vt" href="${VT_URL}" target="_blank" rel="noopener">📡 Apri ViaggiaTreno ↗</a></div>
+  <small class="vtmsg">Ritardo della Linea 2: copia il numero, apri, incolla e premi Cerca</small></div>` : '';
 // Copia sincrona (funziona anche se subito dopo si apre un'altra pagina), più la copia "moderna" come rinforzo
 function copia(testo){
   let ok = false;
@@ -516,17 +524,23 @@ function copia(testo){
   return ok;
 }
 const curL2 = {andata:null, ritorno:null};
-document.addEventListener('click', e => {
-  const a = e.target.closest && e.target.closest('a[data-n]'); if (!a) return;
-  const ok = copia(a.dataset.n), sm = a.querySelector('small');
-  if (sm) sm.textContent = ok ? `✅ ${a.dataset.n} copiato: incollalo e premi Cerca` : `Numero treno: ${a.dataset.n} (scrivilo nel campo)`;
+document.addEventListener('click', async e => {
+  const b = e.target.closest && e.target.closest('.vtcopy'); if (!b) return;
+  const n = b.dataset.copy, msg = b.closest('.vtbox').querySelector('.vtmsg');
+  let ok = false;
+  try { if (navigator.clipboard){ await navigator.clipboard.writeText(n); ok = true; } } catch(err){}
+  if (!ok) ok = copia(n);
+  b.textContent = ok ? `✅ Copiato ${n}` : `📋 Copia ${n}`;
+  msg.innerHTML = ok ? 'Ora tocca 📡 Apri ViaggiaTreno, incolla e premi Cerca'
+                     : `Non riesco a copiare: il numero è <b style="font-size:1.2rem;user-select:all">${n}</b>`;
 });
 // Il pulsante grande in fondo usa il treno consigliato nel tab aperto
 function aggiornaL2Btn(){
-  const b = $('l2live'); if (!b) return;
   const n = (tabAttivo.startsWith('ritorno') ? curL2.ritorno : curL2.andata);
-  if (n){ b.dataset.n = n; $('l2livesub').textContent = `treno ${n} · copio il numero, tu incollalo`; }
-  else { delete b.dataset.n; $('l2livesub').textContent = ''; }
+  const box = $('l2box'); if (!box) return;
+  const html = n ? `<span class="lbl">Ritardo Linea 2 · treno consigliato</span>${vtBtn(n)}`
+                 : `<a class="vt" href="${VT_URL}" target="_blank" rel="noopener">📡 Apri ViaggiaTreno ↗</a>`;
+  if (box.dataset.n !== String(n)){ box.innerHTML = html; box.dataset.n = String(n); }   // non cancello il "Copiato" a ogni minuto
 }
 
 // ---------------- "Al volo": la corsa prima di quella sicura ----------------
