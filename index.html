@@ -99,6 +99,23 @@ details.sim summary{cursor:pointer;color:var(--muted);font-weight:600}
 .livebtn{align-self:flex-start;margin-top:4px;padding:6px 10px;border-radius:6px;border:1px solid var(--amber);color:var(--amber);font-size:.85rem;font-weight:700;text-decoration:none}
 .live small{display:block;font-weight:400;font-size:.75rem;color:var(--muted)}
 .live{display:block;text-align:center;padding:12px;border-radius:10px;border:1px solid var(--accent);color:var(--accent);font-weight:700;text-decoration:none}
+/* Mappa: linea verticale con le fermate, colori come la mappa ufficiale (Flegree blu, Linea 2 azzurra) */
+.mappa{list-style:none;margin:12px 0 4px;padding:0 0 0 6px;--cf:#2f6db5;--l2:#7cc4e8;--pd:var(--muted)}
+.stop{position:relative;padding:0 0 18px 30px;display:flex;flex-direction:column;font-size:.95rem}
+.stop:last-child{padding-bottom:0}
+.stop::before{content:"";position:absolute;left:7px;top:10px;bottom:-4px;width:4px;background:var(--c)}
+.stop:last-child::before{display:none}
+.stop .dot{position:absolute;left:2px;top:4px;width:14px;height:14px;border-radius:50%;background:var(--bg);border:3px solid var(--c);box-sizing:border-box}
+.stop.grande .dot{width:18px;height:18px;left:0;top:2px;border-width:4px}
+.stop.cambio .dot{background:var(--ink)}
+.stop small{color:var(--muted);font-size:.78rem}
+.stop.piedi{--c:var(--pd)} .stop.piedi::before{background:repeating-linear-gradient(var(--pd) 0 4px,transparent 4px 8px)}
+.stop.cf{--c:var(--cf)} .stop.cambio{--c:var(--cf)} .stop.cambio::before{background:var(--l2)}
+.stop.l2{--c:var(--l2)} .stop.l2.grande::before{background:repeating-linear-gradient(var(--pd) 0 4px,transparent 4px 8px)}
+.stop.fine{--c:var(--pd)}
+.legenda{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:.78rem;color:var(--muted);margin-top:10px}
+.sw{display:inline-block;width:18px;height:4px;border-radius:2px}
+.sw.cf{background:#2f6db5} .sw.l2{background:#7cc4e8} .sw.piedi{background:repeating-linear-gradient(90deg,var(--muted) 0 4px,transparent 4px 7px)}
 .ver{font-size:.7rem;color:var(--muted);text-align:center;opacity:.7}
 footer{font-size:.78rem;color:var(--muted);line-height:1.5}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -250,6 +267,21 @@ footer{font-size:.78rem;color:var(--muted);line-height:1.5}
     </div>
   </details>
 
+  <details class="sim" id="mappabox">
+    <summary>🗺️ Mappa del viaggio</summary>
+    <ol class="mappa">
+      <li class="stop piedi"><span class="dot"></span><b>🏠 Casa</b><small>10 min a piedi</small></li>
+      <li class="stop cf grande"><span class="dot"></span><b>La Trencia</b><small>Circumflegrea · una ogni 24 min</small></li>
+      <li class="stop cf"><span class="dot"></span>Rione Traiano</li>
+      <li class="stop cf"><span class="dot"></span>Soccavo</li>
+      <li class="stop cf"><span class="dot"></span>Piave<small>15 min da La Trencia</small></li>
+      <li class="stop cambio grande"><span class="dot"></span><b>Montesanto</b><small>cambio: 7 min · binario per Licola sul tabellone (il 5/11 era il 4)</small></li>
+      <li class="stop l2"><span class="dot"></span>Piazza Cavour</li>
+      <li class="stop l2 grande"><span class="dot"></span><b>Piazza Garibaldi</b><small>Linea 2 · 8 min di treno + 3 per il binario</small></li>
+      <li class="stop fine"><span class="dot"></span><b>🏢 Lavoro</b><small>20 min a piedi</small></li>
+    </ol>
+    <div class="legenda"><span class="sw cf"></span>Circumflegrea <span class="sw l2"></span>Linea 2 <span class="sw piedi"></span>a piedi</div>
+  </details>
   <details class="sim" id="infobox">
     <summary>Info</summary>
     <footer id="foot"></footer>

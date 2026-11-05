@@ -181,6 +181,15 @@ test('Andata in corso, sono a La Trencia alle 08:00: Cumana 08:00, Linea 2 08:24
   assert.match(r, /al lavoro alle 08:54/);
 });
 
+test('Mappa del viaggio: c\'è, con le fermate giuste e il numero 5164 alle 16:24 come sul tabellone', async () => {
+  const a = await apri('2026-11-05T15:08:00Z', { hash: '#ritorno' });
+  const mappa = a.testo('mappabox');
+  for (const f of ['La Trencia', 'Montesanto', 'Piazza Cavour', 'Piazza Garibaldi']) assert.match(mappa, new RegExp(f));
+  const w = {}; new Function('window', DATA)(w);
+  assert.equal(w.ORARI.cumanaRitorno.find(c => c.dep === 984).n, 5164);   // tabellone di Montesanto 5/11 ore 16:08
+  assert.equal(w.ORARI.cumanaRitorno.find(c => c.dep === 1008).n, 5168);
+});
+
 // ---------------- COERENZA DEI FILE ----------------
 test('Versione uguale in app.js e sw.js', () => {
   const v = APP.match(/const VERSIONE = '([\d.]+)'/)[1];
