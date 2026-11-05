@@ -1,6 +1,6 @@
 // Memoria offline dell'app.
 // A ogni modifica aumenta la versione qui sotto E in index.html (VERSIONE), es. 2.1 -> 2.2.
-const CACHE = 'cumana-2.3';
+const CACHE = 'cumana-2.4';
 const FILES = ['./', './index.html', './data.js', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 const ATTESA_RETE = 3000;   // ms: se internet non risponde entro 3 secondi uso la copia salvata
 

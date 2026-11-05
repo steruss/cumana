@@ -262,7 +262,7 @@ footer{font-size:.78rem;color:var(--muted);line-height:1.5}
 <script>
 "use strict";
 // Versione dell'app: si aumenta a ogni modifica (e va uguale in sw.js)
-const VERSIONE = '2.3';
+const VERSIONE = '2.4';
 const O = window.ORARI;
 const $ = id => document.getElementById(id);
 const hm = m => { m = ((m % 1440) + 1440) % 1440; return String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0'); };
@@ -545,6 +545,7 @@ document.addEventListener('click', async e => {
 function aggiornaL2Btn(){
   const n = (tabAttivo.startsWith('ritorno') ? curL2.ritorno : curL2.andata);
   const box = $('l2box'); if (!box) return;
+  box.hidden = tabAttivo.endsWith('-corso');
   const html = n ? `<span class="lbl">Ritardo Linea 2 · treno consigliato</span>${vtBtn(n)}`
                  : `<a class="vt" href="${VT_URL}" target="_blank" rel="noopener">📡 Apri ViaggiaTreno ↗</a>`;
   if (box.dataset.n !== String(n)){ box.innerHTML = html; box.dataset.n = String(n); }   // non cancello il "Copiato" a ogni minuto
@@ -594,7 +595,7 @@ function renderCorso(now, day){
     const l = l2Andata(arr + X, t);
     $('acCr').innerHTML = `<span>Arrivo a Montesanto alle <b>${hm(arr)}</b>${ritTxt(lr)}</span>` + (l
       ? `<div class="row"><span>Prendi la Linea 2 delle</span><span class="tt">${hm(l.treni[0].dep)}</span></div>
-         <span>Al lavoro alle <b>${hm(l.treni[0].lav)}</b></span>${vtBtn(l.treni[0].n)}
+         <span>Al lavoro alle <b>${hm(l.treni[0].lav)}</b></span>
          ${l.treni.length>1 ? `<span class="soft">Se perdi quella: ${l.treni.slice(1,4).map(x=>hm(x.dep)).join(' · ')}</span>` : ''}
          ${(v => v ? `<span class="volo">${voloTxt(v, 'Linea 2', `al lavoro ${hm(v.lav)}`)}</span>` : '')(l.stima ? null : voloL2(arr, l.treni[0].dep, t))}`
       : nessuno('Linea 2 già chiusa.'));
@@ -613,7 +614,7 @@ function renderCorso(now, day){
     .map(x => ({k:x[0], lbl:hm(x[0]), dep:x[0], n:x[2]}));
   sel = chips('acL', La, now);
   $('acLr').innerHTML = sel
-    ? `<span>A Garibaldi alle <b>${hm(sel.dep + G)}</b></span><div class="row"><span>Al lavoro alle</span><span class="tt">${hm(sel.dep + G + W)}</span></div>${vtBtn(sel.n)}`
+    ? `<span>A Garibaldi alle <b>${hm(sel.dep + G)}</b></span><div class="row"><span>Al lavoro alle</span><span class="tt">${hm(sel.dep + G + W)}</span></div>`
     : nessuno('Nessuna Linea 2 partita da Montesanto negli ultimi 15 minuti.');
 
   // ===== USCITA IN CORSO =====
@@ -625,7 +626,7 @@ function renderCorso(now, day){
     const cs = O.cumanaRitorno.filter(c => c.dep >= sel.x.ms + X && !soppressa('montesanto_p', c.dep));
     if (cs.length){
       const lr = liveRit('montesanto_p', cs[0].dep), rit = lr ? lr.rit : 0;
-      $('rcLr').innerHTML = `<span>Arrivo a Montesanto alle <b>${hm(sel.x.ms)}</b></span>${vtBtn(sel.x.n)}
+      $('rcLr').innerHTML = `<span>Arrivo a Montesanto alle <b>${hm(sel.x.ms)}</b></span>
         <div class="row"><span>Prendi la Cumana delle</span><span class="tt">${hm(cs[0].dep)}</span>${ritTxt(lr)}</div>
         <span>A casa alle <b>${hm(cs[0].arr + rit + C)}</b></span>
         ${cs[1] ? `<span class="soft">Se perdi quella: ${cs.slice(1,3).map(c=>hm(c.dep)).join(' · ')}</span>` : ''}
