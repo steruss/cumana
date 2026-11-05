@@ -2,7 +2,7 @@
 // Gli orari stanno in data.js; la grafica in index.html.
 "use strict";
 // Versione dell'app: si aumenta a ogni modifica (e va uguale in sw.js)
-const VERSIONE = '2.6';
+const VERSIONE = '2.7';
 const O = window.ORARI;
 const $ = id => document.getElementById(id);
 const hm = m => { m = ((m % 1440) + 1440) % 1440; return String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0'); };
@@ -229,10 +229,29 @@ async function caricaLive(){
   } catch(e){}
   liveStato(); render(true);
 }
+// Aggiornamento automatico all'apertura: chiedo a GitHub di controllare EAV
+// solo se ho la chiave, se il dato ha più di 5 minuti, dalle 5 alle 23 e se non l'ho già chiesto da poco
+const AUTO_ETA = 5, AUTO_PAUSA = 4 * 60000;
+let inCorso = false;
+function autoAggiorna(){
+  if (!getTok() || inCorso || document.hidden) return;
+  if (liveEta() <= AUTO_ETA) return;
+  const t = romeToday(); if (t.h < 5 || t.h >= 23) return;
+  let ultima = 0; try { ultima = +localStorage.getItem('ultimaRichiesta') || 0; } catch(e){}
+  if (Date.now() - ultima < AUTO_PAUSA) return;
+  chiediAggiornamento();
+}
+
 async function chiediAggiornamento(){
+  if (inCorso) return;
+  inCorso = true;
+  try { await chiediAggiornamentoVero(); } finally { inCorso = false; }
+}
+async function chiediAggiornamentoVero(){
   const tk = getTok();
   if (!tk){ $('tokbox').hidden = false; return; }
   const prima = LIVE ? LIVE.agg : '';
+  try { localStorage.setItem('ultimaRichiesta', String(Date.now())); } catch(e){}
   liveStato('📡 Chiedo a GitHub di controllare… (circa 1 minuto)');
   try {
     const r = await fetch(DISPATCH_URL, {method:'POST', headers:{Authorization:'Bearer '+tk, Accept:'application/vnd.github+json', 'Content-Type':'application/json'}, body:JSON.stringify({ref:'main'})});
@@ -486,9 +505,9 @@ render(true);
 setInterval(render, 1000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) render(true); });
 
-caricaLive();
+caricaLive().then(autoAggiorna);
 setInterval(() => { if (!document.hidden) caricaLive(); }, 120000);       // ogni 2 minuti
-document.addEventListener('visibilitychange', () => { if (!document.hidden) caricaLive(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) caricaLive().then(autoAggiorna); });
 setInterval(() => liveStato(), 30000);
 
 $('ver').textContent = `Versione ${VERSIONE}`;

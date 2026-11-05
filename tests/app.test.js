@@ -15,7 +15,7 @@ const aperte = [];
 after(() => aperte.forEach(w => w.close()));   // chiudo sempre tutte le pagine finte, anche se un test fallisce
 
 // Apre l'app con l'orologio fermo a `quando` (ora UTC) e, se serve, con i ritardi EAV finti `live`
-async function apri(quando, { live = null, hash = '#andata' } = {}) {
+async function apri(quando, { live = null, hash = '#andata', chiave = null } = {}) {
   const errori = [];
   const vc = new VirtualConsole();
   vc.on('jsdomError', e => errori.push(e.message));
@@ -26,13 +26,18 @@ async function apri(quando, { live = null, hash = '#andata' } = {}) {
   w.eval(`(() => { const R = Date; class F extends R { constructor(...a){ a.length ? super(...a) : super(${T}); } static now(){ return ${T}; } } globalThis.Date = F; })()`);
   if (live) live.agg = live.agg || new Date(T).toISOString();
   w.scrollTo = () => {};                               // jsdom non sa scorrere la pagina
-  w.fetch = async () => live ? { ok: true, status: 200, json: async () => live } : { ok: false, status: 404 };
+  const chiamate = [];
+  if (chiave) w.localStorage.setItem('ghtok', chiave);
+  w.fetch = async (url, opt = {}) => { chiamate.push({ url: String(url), metodo: opt.method || 'GET' });
+    if (opt.method === 'POST') return { ok: true, status: 204 };
+    return live ? { ok: true, status: 200, json: async () => live } : { ok: false, status: 404 }; };
   w.eval(DATA);
   w.eval(APP);
   await new Promise(r => setTimeout(r, 30));          // lascio finire il caricamento dei ritardi
   const testo = id => (w.document.getElementById(id).textContent || '').replace(/\s+/g, ' ').trim();
   const chiudi = () => w.close();
-  return { w, testo, errori, chiudi };
+  const richieste = () => chiamate.filter(c => c.metodo === 'POST' && c.url.includes('/dispatches')).length;
+  return { w, testo, errori, chiudi, richieste };
 }
 const liveFinto = (extra = {}) => ({ ok: true, trencia_p: [], montesanto_a: [], montesanto_p: [], ...extra });
 
@@ -106,6 +111,18 @@ test('Ritardi vecchi (oltre 20 minuti): non li usa', async () => {
   assert.equal(a.testo('a1t'), '08:24');               // dato vecchio: la soppressione non conta
   assert.match(a.testo('livestato'), /troppo vecchi/);
   a.chiudi();
+});
+
+test('All\'apertura chiede da solo i ritardi se sono vecchi', async () => {
+  const vecchi = await apri('2026-11-05T07:00:00Z', { chiave: 'x', live: liveFinto({ agg: '2026-11-05T06:40:00Z' }) });
+  assert.equal(vecchi.richieste(), 1);
+  const freschi = await apri('2026-11-05T07:00:00Z', { chiave: 'x', live: liveFinto({ agg: '2026-11-05T06:58:00Z' }) });
+  assert.equal(freschi.richieste(), 0);                  // dato di 2 minuti fa: non serve
+  const notte = await apri('2026-11-05T02:00:00Z', { chiave: 'x', live: liveFinto({ agg: '2026-11-05T01:00:00Z' }) });
+  assert.equal(notte.richieste(), 0);                    // alle 3 di notte la Cumana non gira
+  const senza = await apri('2026-11-05T07:00:00Z', { live: liveFinto({ agg: '2026-11-05T06:40:00Z' }) });
+  assert.equal(senza.richieste(), 0);                    // senza chiave non chiede niente
+  assert.equal(senza.w.document.getElementById('tokbox').hidden, true);
 });
 
 // ---------------- IN CORSO ----------------
