@@ -2,7 +2,7 @@ name: Ritardi EAV
 on:
   workflow_dispatch:          # il pulsante "Aggiorna ritardi" nell'app
   schedule:
-    - cron: "*/10 4-22 * * *" # ogni 10 minuti dalle 5 alle 23 (ora italiana invernale)
+    - cron: "3-59/10 4-22 * * *" # ogni 10 minuti (:03, :13, :23...) dalle 5 alle 23 ora italiana; evito i minuti tondi
   push:
     branches: [main]
     paths: [".github/workflows/live.yml", "scripts/live.py"]
