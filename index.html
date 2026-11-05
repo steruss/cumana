@@ -167,6 +167,7 @@ footer{font-size:.78rem;color:var(--muted);line-height:1.5}
       <div class="route">🚃 Sono sulla Cumana delle…</div>
       <div class="chips" id="acC"></div>
       <div class="res" id="acCr"></div>
+      <a class="livebtn" href="https://orariotreni.eavsrl.it/teleindicatori/?stazione=801&amp;tipo=A" target="_blank" rel="noopener">📡 Ritardi live arrivi a Montesanto ↗</a>
     </div>
     <div class="leg">
       <div class="route">📍 Sono a Montesanto</div>
@@ -190,11 +191,13 @@ footer{font-size:.78rem;color:var(--muted);line-height:1.5}
     <div class="leg">
       <div class="route">📍 Sono a Montesanto</div>
       <div class="res" id="rcM"></div>
+      <a class="livebtn" href="https://orariotreni.eavsrl.it/teleindicatori/?stazione=801&amp;tipo=P" target="_blank" rel="noopener">📡 Ritardi live a Montesanto ↗</a>
     </div>
     <div class="leg">
       <div class="route">🚃 Sono sulla Cumana delle…</div>
       <div class="chips" id="rcC"></div>
       <div class="res" id="rcCr"></div>
+      <a class="livebtn" href="https://orariotreni.eavsrl.it/teleindicatori/?stazione=823&amp;tipo=A" target="_blank" rel="noopener">📡 Ritardi live arrivi a La Trencia ↗</a>
     </div>
   </section>
 
@@ -262,7 +265,7 @@ footer{font-size:.78rem;color:var(--muted);line-height:1.5}
 <script>
 "use strict";
 // Versione dell'app: si aumenta a ogni modifica (e va uguale in sw.js)
-const VERSIONE = '2.4';
+const VERSIONE = '2.5';
 const O = window.ORARI;
 const $ = id => document.getElementById(id);
 const hm = m => { m = ((m % 1440) + 1440) % 1440; return String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0'); };
