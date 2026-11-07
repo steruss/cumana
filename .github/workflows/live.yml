@@ -16,14 +16,29 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - uses: actions/checkout@v4
+      - name: Di notte non serve (il timer di GitHub a volte parte in ritardo)
+        id: orario
+        run: |
+          ORA=$(TZ=Europe/Rome date +%H)
+          if [ "${{ github.event_name }}" = "schedule" ] && { [ "$ORA" -lt 5 ] || [ "$ORA" -ge 23 ]; }; then
+            echo "Sono le $ORA in Italia: la Cumana non gira, salto."; echo "salta=1" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v5
+        if: steps.orario.outputs.salta != '1'
       - name: Leggi i tabelloni EAV
+        if: steps.orario.outputs.salta != '1'
         run: python3 scripts/live.py > /tmp/live.json && cat /tmp/live.json | head -5
       - name: Salva sul ramo "live" (un solo commit, sovrascritto ogni volta)
+        if: steps.orario.outputs.salta != '1'
         run: |
           mkdir /tmp/out && cp /tmp/live.json /tmp/out/live.json && cd /tmp/out
           git init -q -b live
           git -c user.name="ritardi-bot" -c user.email="actions@users.noreply.github.com" commit -q --allow-empty -m "ritardi" 
           git add live.json
           git -c user.name="ritardi-bot" -c user.email="actions@users.noreply.github.com" commit -q -m "ritardi $(date -u +%H:%M)"
-          git push -f -q "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" live
+          # se GitHub dà un errore momentaneo riprovo fino a 3 volte
+          for i in 1 2 3; do
+            git push -f -q "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" live && exit 0
+            echo "Salvataggio non riuscito (tentativo $i), riprovo tra 10 secondi"; sleep 10
+          done
+          exit 1
