@@ -1,0 +1,360 @@
+{
+ "agg": "2026-11-07T10:58:45+00:00",
+ "ok": true,
+ "trencia_p": [
+  {
+   "treno": "5115",
+   "dest": "MONTESANTO",
+   "ora": "12:00",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5119",
+   "dest": "MONTESANTO",
+   "ora": "12:24",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5123",
+   "dest": "MONTESANTO",
+   "ora": "12:48",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5127",
+   "dest": "MONTESANTO",
+   "ora": "13:12",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5131",
+   "dest": "MONTESANTO",
+   "ora": "13:36",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5135",
+   "dest": "MONTESANTO",
+   "ora": "14:00",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5139",
+   "dest": "MONTESANTO",
+   "ora": "14:24",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5143",
+   "dest": "MONTESANTO",
+   "ora": "14:48",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5147",
+   "dest": "MONTESANTO",
+   "ora": "15:12",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5151",
+   "dest": "MONTESANTO",
+   "ora": "15:36",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5155",
+   "dest": "MONTESANTO",
+   "ora": "16:00",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5159",
+   "dest": "MONTESANTO",
+   "ora": "16:24",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5163",
+   "dest": "MONTESANTO",
+   "ora": "16:48",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5167",
+   "dest": "MONTESANTO",
+   "ora": "17:12",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5171",
+   "dest": "MONTESANTO",
+   "ora": "17:36",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5175",
+   "dest": "MONTESANTO",
+   "ora": "18:00",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5179",
+   "dest": "MONTESANTO",
+   "ora": "18:24",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5183",
+   "dest": "MONTESANTO",
+   "ora": "18:48",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5187",
+   "dest": "MONTESANTO",
+   "ora": "19:12",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5191",
+   "dest": "MONTESANTO",
+   "ora": "19:36",
+   "rit": 0,
+   "info": ""
+  }
+ ],
+ "montesanto_a": [
+  {
+   "treno": "5115",
+   "dest": "LICOLA",
+   "ora": "12:15",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5119",
+   "dest": "LICOLA",
+   "ora": "12:39",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5123",
+   "dest": "LICOLA",
+   "ora": "13:03",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5127",
+   "dest": "LICOLA",
+   "ora": "13:27",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5131",
+   "dest": "LICOLA",
+   "ora": "13:51",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5135",
+   "dest": "LICOLA",
+   "ora": "14:15",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5139",
+   "dest": "LICOLA",
+   "ora": "14:39",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5143",
+   "dest": "LICOLA",
+   "ora": "15:03",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5147",
+   "dest": "LICOLA",
+   "ora": "15:27",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5151",
+   "dest": "LICOLA",
+   "ora": "15:51",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5155",
+   "dest": "LICOLA",
+   "ora": "16:15",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5159",
+   "dest": "LICOLA",
+   "ora": "16:39",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5163",
+   "dest": "LICOLA",
+   "ora": "17:03",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5167",
+   "dest": "LICOLA",
+   "ora": "17:27",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5171",
+   "dest": "LICOLA",
+   "ora": "17:51",
+   "rit": 0,
+   "info": ""
+  }
+ ],
+ "montesanto_p": [
+  {
+   "treno": "5120",
+   "dest": "LICOLA",
+   "ora": "12:00",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5124",
+   "dest": "LICOLA",
+   "ora": "12:24",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5128",
+   "dest": "LICOLA",
+   "ora": "12:48",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5132",
+   "dest": "LICOLA",
+   "ora": "13:12",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5136",
+   "dest": "LICOLA",
+   "ora": "13:36",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5140",
+   "dest": "LICOLA",
+   "ora": "14:00",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5144",
+   "dest": "LICOLA",
+   "ora": "14:24",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5148",
+   "dest": "LICOLA",
+   "ora": "14:48",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5152",
+   "dest": "LICOLA",
+   "ora": "15:12",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5156",
+   "dest": "LICOLA",
+   "ora": "15:36",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5160",
+   "dest": "LICOLA",
+   "ora": "16:00",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5164",
+   "dest": "LICOLA",
+   "ora": "16:24",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5168",
+   "dest": "LICOLA",
+   "ora": "16:48",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5172",
+   "dest": "LICOLA",
+   "ora": "17:12",
+   "rit": 0,
+   "info": ""
+  },
+  {
+   "treno": "5176",
+   "dest": "LICOLA",
+   "ora": "17:36",
+   "rit": 0,
+   "info": ""
+  }
+ ]
+}
