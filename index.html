@@ -116,6 +116,13 @@ details.sim summary{cursor:pointer;color:var(--muted);font-weight:600}
 .legenda{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:.78rem;color:var(--muted);margin-top:10px}
 .sw{display:inline-block;width:18px;height:4px;border-radius:2px}
 .sw.cf{background:#2f6db5} .sw.l2{background:#7cc4e8} .sw.piedi{background:repeating-linear-gradient(90deg,var(--muted) 0 4px,transparent 4px 7px)}
+body.no-l2 .solo-l2, body.no-turni .solo-turni{display:none!important}
+.imp{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.imp label{font-size:.85rem;color:var(--muted)}
+.imp .chk{display:flex;gap:8px;align-items:center;color:var(--ink);margin-top:6px}
+.imp select,.imp input[type=number]{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);max-width:14rem}
+.imp .vtrow{margin-top:8px}
+.linkbtn{border:0;padding:4px 0;align-self:flex-start;font-size:.8rem;font-weight:400;color:var(--muted);text-decoration:underline}
 .ver{font-size:.7rem;color:var(--muted);text-align:center;opacity:.7}
 footer{font-size:.78rem;color:var(--muted);line-height:1.5}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -124,7 +131,7 @@ footer{font-size:.78rem;color:var(--muted);line-height:1.5}
 <body>
 <div class="wrap">
   <header>
-    <h1>La Trencia ⇄ Garibaldi</h1>
+    <h1><span class="nstaz">La Trencia</span> ⇄ <span id="dest">Garibaldi</span></h1>
     <div class="right"><div class="clock" id="clock">--:--</div><div class="day" id="day"></div></div>
   </header>
 
@@ -151,14 +158,14 @@ footer{font-size:.78rem;color:var(--muted);line-height:1.5}
   <section class="board" id="andata" role="tabpanel">
     <h2>Andata · vado a lavoro</h2>
     <div class="leg">
-      <div class="route">Cumana · La Trencia → Montesanto</div>
+      <div class="route">Cumana · <span class="nstaz">La Trencia</span> → Montesanto</div>
       <div class="big"><span class="time" id="a1t">--:--</span><span class="in" id="a1i"></span></div>
       <div class="note" id="a1n"></div>
       <div class="lost" id="a1l"></div>
       <div class="next" id="a1x"></div>
-      <a class="livebtn" href="https://orariotreni.eavsrl.it/teleindicatori/?stazione=823&amp;tipo=P" target="_blank" rel="noopener">📡 Ritardi live a La Trencia ↗</a>
+      <a class="livebtn lvstaz" data-tipo="P" href="https://orariotreni.eavsrl.it/teleindicatori/?stazione=823&amp;tipo=P" target="_blank" rel="noopener">📡 Ritardi live a <span class="nstaz">La Trencia</span> ↗</a>
     </div>
-    <div class="leg">
+    <div class="leg solo-l2">
       <div class="route">Linea 2 · Montesanto → Garibaldi <span class="tag" id="a2tag">stima</span></div>
       <div class="big"><span class="time" id="a2t">--:--</span><span class="in" id="a2i"></span></div>
       <div class="note" id="a2n"></div>
@@ -176,9 +183,9 @@ footer{font-size:.78rem;color:var(--muted);line-height:1.5}
   <section class="board" id="andata-corso" role="tabpanel" hidden>
     <h2>Andata in corso · dove sei?</h2>
     <div class="leg">
-      <div class="route">📍 Sono a La Trencia</div>
+      <div class="route">📍 Sono a <span class="nstaz">La Trencia</span></div>
       <div class="res" id="acT"></div>
-      <a class="livebtn" href="https://orariotreni.eavsrl.it/teleindicatori/?stazione=823&amp;tipo=P" target="_blank" rel="noopener">📡 Ritardi live a La Trencia ↗</a>
+      <a class="livebtn lvstaz" data-tipo="P" href="https://orariotreni.eavsrl.it/teleindicatori/?stazione=823&amp;tipo=P" target="_blank" rel="noopener">📡 Ritardi live a <span class="nstaz">La Trencia</span> ↗</a>
     </div>
     <div class="leg">
       <div class="route">🚃 Sono sulla Cumana delle…</div>
@@ -186,11 +193,11 @@ footer{font-size:.78rem;color:var(--muted);line-height:1.5}
       <div class="res" id="acCr"></div>
       <a class="livebtn" href="https://orariotreni.eavsrl.it/teleindicatori/?stazione=801&amp;tipo=A" target="_blank" rel="noopener">📡 Ritardi live arrivi a Montesanto ↗</a>
     </div>
-    <div class="leg">
+    <div class="leg solo-l2">
       <div class="route">📍 Sono a Montesanto</div>
       <div class="res" id="acM"></div>
     </div>
-    <div class="leg">
+    <div class="leg solo-l2">
       <div class="route">🚆 Sono sulla Linea 2 delle…</div>
       <div class="chips" id="acL"></div>
       <div class="res" id="acLr"></div>
@@ -200,11 +207,11 @@ footer{font-size:.78rem;color:var(--muted);line-height:1.5}
   <!-- ===================== USCITA IN CORSO ===================== -->
   <section class="board" id="ritorno-corso" role="tabpanel" hidden>
     <h2>Uscita in corso · dove sei?</h2>
-    <div class="leg">
+    <div class="leg solo-l2">
       <div class="route">📍 Sono a Garibaldi</div>
       <div class="res" id="rcG"></div>
     </div>
-    <div class="leg">
+    <div class="leg solo-l2">
       <div class="route">🚆 Sono sulla Linea 2 delle…</div>
       <div class="chips" id="rcL"></div>
       <div class="res" id="rcLr"></div>
@@ -218,14 +225,14 @@ footer{font-size:.78rem;color:var(--muted);line-height:1.5}
       <div class="route">🚃 Sono sulla Cumana delle…</div>
       <div class="chips" id="rcC"></div>
       <div class="res" id="rcCr"></div>
-      <a class="livebtn" href="https://orariotreni.eavsrl.it/teleindicatori/?stazione=823&amp;tipo=A" target="_blank" rel="noopener">📡 Ritardi live arrivi a La Trencia ↗</a>
+      <a class="livebtn lvstaz" data-tipo="A" href="https://orariotreni.eavsrl.it/teleindicatori/?stazione=823&amp;tipo=A" target="_blank" rel="noopener">📡 Ritardi live arrivi a <span class="nstaz">La Trencia</span> ↗</a>
     </div>
   </section>
 
   <!-- ===================== RITORNO ===================== -->
   <section class="board" id="ritorno" role="tabpanel" hidden>
     <h2>Uscita · torno a casa</h2>
-    <div class="leg">
+    <div class="leg solo-l2">
       <div class="route">Linea 2 · Garibaldi → Montesanto <span class="tag" id="r2tag">stima</span></div>
       <div class="big"><span class="time" id="r2t">--:--</span><span class="in" id="r2i"></span></div>
       <div class="note" id="r2n"></div>
@@ -233,7 +240,7 @@ footer{font-size:.78rem;color:var(--muted);line-height:1.5}
       <div class="next" id="r2x"></div>
     </div>
     <div class="leg">
-      <div class="route">Cumana · Montesanto → La Trencia</div>
+      <div class="route">Cumana · Montesanto → <span class="nstaz">La Trencia</span></div>
       <div class="big"><span class="time" id="r1t">--:--</span><span class="in" id="r1i"></span></div>
       <div class="note" id="r1n"></div>
       <div class="next" id="r1x"></div>
@@ -244,12 +251,12 @@ footer{font-size:.78rem;color:var(--muted);line-height:1.5}
       <div class="goal"><span class="lbl">Esci dal lavoro</span><span class="val" id="gL">--</span><span class="sub" id="gLs"></span></div>
       <div class="goal"><span class="lbl">A casa alle</span><span class="val" id="gR">--:--</span><span class="sub" id="gRs"></span></div>
     </div>
-    <div class="quick">Fine turno:
+    <div class="quick solo-turni">Fine turno:
       <span id="endbtns"></span>
     </div>
   </section>
 
-  <div class="l2box" id="l2box"></div>
+  <div class="l2box solo-l2" id="l2box"></div>
 
 
   <details class="sim" id="simbox">
@@ -269,7 +276,7 @@ footer{font-size:.78rem;color:var(--muted);line-height:1.5}
 
   <details class="sim" id="mappabox">
     <summary>🗺️ Mappa del viaggio</summary>
-    <ol class="mappa">
+    <ol class="mappa" id="mappa">
       <li class="stop piedi"><span class="dot"></span><b>🏠 Casa</b><small>10 min a piedi</small></li>
       <li class="stop cf grande"><span class="dot"></span><b>La Trencia</b><small>Circumflegrea · una ogni 24 min</small></li>
       <li class="stop cf"><span class="dot"></span>Rione Traiano</li>
@@ -280,13 +287,29 @@ footer{font-size:.78rem;color:var(--muted);line-height:1.5}
       <li class="stop l2 grande"><span class="dot"></span><b>Piazza Garibaldi</b><small>Linea 2 · 8 min di treno + 3 per il binario</small></li>
       <li class="stop fine"><span class="dot"></span><b>🏢 Lavoro</b><small>20 min a piedi</small></li>
     </ol>
-    <div class="legenda"><span class="sw cf"></span>Circumflegrea <span class="sw l2"></span>Linea 2 <span class="sw piedi"></span>a piedi</div>
+    <div class="legenda"><span class="sw cf"></span>Circumflegrea <span class="solo-l2"><span class="sw l2"></span>Linea 2</span> <span class="sw piedi"></span>a piedi</div>
+  </details>
+  <details class="sim" id="setbox">
+    <summary>⚙️ Impostazioni</summary>
+    <form class="imp" id="impform">
+      <label for="iStaz">Stazione di partenza</label>
+      <select id="iStaz"></select>
+      <label for="iCasa">Minuti a piedi da casa alla stazione</label>
+      <input type="number" id="iCasa" min="0" max="60" inputmode="numeric">
+      <label class="chk"><input type="checkbox" id="iL2"> Dopo Montesanto prendo la Linea 2 per Garibaldi</label>
+      <label for="iLav" id="iLavLbl">Minuti a piedi da Garibaldi al lavoro</label>
+      <input type="number" id="iLav" min="0" max="60" inputmode="numeric">
+      <label class="chk" id="iTurLbl"><input type="checkbox" id="iTur"> Mostra i turni (7–15, 15–23, 23–7)</label>
+      <div class="vtrow"><button type="submit">💾 Salva</button><button type="button" id="iReset">Valori iniziali</button></div>
+      <small class="note">Restano solo su questo telefono.</small>
+      <button type="button" id="iChiave" class="linkbtn">🔑 Chiave GitHub per il pulsante Aggiorna</button>
+    </form>
   </details>
   <details class="sim" id="infobox">
     <summary>Info</summary>
     <footer id="foot"></footer>
   </details>
-  <details class="sim" id="turnibox">
+  <details class="sim solo-turni" id="turnibox">
     <summary>Verifica turni</summary>
     <div class="controls">
       <select id="tday" aria-label="Giorno del turno"></select>

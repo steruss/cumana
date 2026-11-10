@@ -20,6 +20,16 @@ window.ORARI = {
   // auto: true = quel turno lo fai in macchina, la pagina non lo considera
   turni: [{nome:"mattina", inizio:420, fine:900}, {nome:"pomeriggio", inizio:900, fine:1380, auto:true}, {nome:"notte", inizio:1380, fine:420}],
 
+  // ---- Stazioni di partenza possibili (gli orari qui sotto sono quelli di La Trencia) ----
+  // andata: minuti rispetto a La Trencia verso Montesanto; ritorno: minuti di arrivo rispetto a La Trencia
+  // eav = codice del tabellone live EAV; live = nome della lista nel file dei ritardi
+  stazioni: {
+    trencia: {nome:"La Trencia", eav:823, live:"trencia_p", andata:0, ritorno:0},
+    pianura: {nome:"Pianura", eav:824, live:"pianura_p", andata:-2, ritorno:5, ritornoPrima:3}   // PDF EAV: la 05:02 da Montesanto ci mette 3 min in più, le altre 5
+  },
+  // Impostazioni di partenza (quelle di Ste); ognuno le cambia dal menu ⚙️ e restano sul suo telefono
+  profiloBase: {stazione:"trencia", casa:10, linea2:true, lavoro:20, montesantoLavoro:0, turni:true},
+
   // ---- Circumflegrea (PDF EAV) - stesso orario tutti i giorni ----
   // La Trencia -> Montesanto: dalle 6:00 ogni 24 min fino alle 22:00, 15 min di viaggio
   // n = numero del treno (dal PDF EAV: 06:00 è il 50545, poi 5059, 5063… di 4 in 4)

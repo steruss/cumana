@@ -22,6 +22,7 @@ try:
     res["trencia_p"] = [r for r in tabellone(823, "P") if r["dest"] == "MONTESANTO"]
     res["montesanto_a"] = tabellone(801, "A")
     res["montesanto_p"] = tabellone(801, "P")
+    res["pianura_p"] = tabellone(824, "P")   # Pianura (stazione di Sabrina): passano entrambe le direzioni
 except Exception as e:
     res["ok"] = False
     res["errore"] = str(e)[:200]

@@ -2,13 +2,30 @@
 // Gli orari stanno in data.js; la grafica in index.html.
 "use strict";
 // Versione dell'app: si aumenta a ogni modifica (e va uguale in sw.js)
-const VERSIONE = '2.13';
+const VERSIONE = '3.0';
 const O = window.ORARI;
 const $ = id => document.getElementById(id);
 const hm = m => { m = ((m % 1440) + 1440) % 1440; return String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0'); };
 const DOW = ['domenica','lunedì','martedì','mercoledì','giovedì','venerdì','sabato'];
 const MESI = ['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];
-const C = O.casaTrencia, X = O.cambioMontesanto, G = O.montesantoGaribaldi, W = O.garibaldiLavoro;
+// ---------------- Impostazioni personali (salvate solo su questo telefono) ----------------
+function leggiProfilo(){
+  let p = {};
+  try { p = JSON.parse(localStorage.getItem('profilo') || '{}') || {}; } catch(e){}
+  const P = Object.assign({}, O.profiloBase, p);
+  if (!O.stazioni[P.stazione]) P.stazione = O.profiloBase.stazione;
+  return P;
+}
+const P = leggiProfilo();
+const STAZ = O.stazioni[P.stazione];
+const LP = STAZ.live;                       // lista del tabellone live della mia stazione
+// Gli orari in data.js sono quelli di La Trencia: li sposto sulla mia stazione
+O.cumanaAndata = O.cumanaAndata.map(c => ({...c, dep: c.dep + STAZ.andata}));
+O.cumanaRitorno = O.cumanaRitorno.map((c, i) => ({...c, arr: c.arr + (i === 0 && STAZ.ritornoPrima != null ? STAZ.ritornoPrima : STAZ.ritorno)}));
+const C = P.casa, X = O.cambioMontesanto, G = O.montesantoGaribaldi, W = P.lavoro;
+const ML = P.montesantoLavoro;              // senza Linea 2: minuti da Montesanto al lavoro
+document.body.classList.toggle('no-l2', !P.linea2);
+document.body.classList.toggle('no-turni', !P.turni || !P.linea2);
 // Uscita: g = partenza VERA da P.zza Garibaldi (come sul tabellone) = arrivo a Montesanto - minuti di treno
 const TG = O.treniGaribaldiMontesanto, B = O.binario;
 
@@ -48,7 +65,7 @@ function catenaAndata(c, t){ const l = l2Andata(c.arr + X, t); return l ? {c, l2
 function andata(now, day, dom){
   const t = tipo(day);
   const tutte = O.cumanaAndata.filter(c=>c.dep - C >= now);
-  const ok = tutte.filter(c => dom || !soppressa('trencia_p', c.dep));     // salto le soppresse
+  const ok = tutte.filter(c => dom || !soppressa(LP, c.dep));     // salto le soppresse
   if (!ok.length) return null;
   const persa = O.cumanaAndata.filter(c=>c.dep >= now && c.dep - C < now);
   const sopp = tutte.filter(c => c.dep < ok[0].dep);
@@ -67,6 +84,7 @@ function l2Ritorno(pronto, t){
   return {treni:[{g, ms:g+hw+TG}], stima:true, hw};
 }
 function ritorno(now, day, dom){
+  if (!P.linea2) return ritornoSoloCumana(now, day, dom);
   const t = tipo(day);
   const l = l2Ritorno(now + W + B, t); if (!l) return null;   // a piedi fino a Garibaldi + scendere al binario
   const tutte = O.cumanaRitorno.filter(c=>c.dep >= l.treni[0].ms + X);
@@ -79,6 +97,16 @@ function ritorno(now, day, dom){
   if (!l.stima){ const ult = l.treni.filter(x=>x.ms + X <= cum.dep).pop(); esci = ult.g - B - W; }
   else esci = cum.dep - X - TG - l.hw - B - W;
   return {l2:l.treni[0], altri:l.treni.slice(1,4), stima:l.stima, hw:l.hw, cum, poi:b.slice(1,4), esci:Math.max(esci, now), casa:cum.arr + C, tipo:t, sopp};
+}
+
+// Senza Linea 2: dal lavoro vado a piedi a Montesanto e prendo la Cumana
+function ritornoSoloCumana(now, day, dom){
+  const t = tipo(day);
+  const tutte = O.cumanaRitorno.filter(c => c.dep >= now + ML);
+  const b = tutte.filter(c => dom || !soppressa('montesanto_p', c.dep));
+  if (!b.length) return null;
+  const cum = b[0];
+  return {l2:null, altri:[], cum, poi:b.slice(1,4), esci:Math.max(cum.dep - ML, now), casa:cum.arr + C, tipo:t, sopp:tutte.filter(c => c.dep < cum.dep)};
 }
 
 // Prova oggi, se non c'è niente passa a domani
@@ -115,13 +143,16 @@ function renderAndata(now, day){
   const {r, now:n, domani} = conDomani(andata, now, day);
   if (!r){ ['a1t','a2t','gW'].forEach(i=>$(i).textContent='--:--'); return; }
   $('a1t').textContent = hm(r.c.dep); setIn($('a1i'), r.c.dep - n);
-  badge($('a1i'), domani ? null : liveRit('trencia_p', r.c.dep));
+  badge($('a1i'), domani ? null : liveRit(LP, r.c.dep));
   $('a1n').textContent = `Arrivo a Montesanto alle ${hm(r.c.arr)}` + (domani ? ' · 🌙 prima Cumana di domani' : '');
   $('a1l').textContent = [r.persa ? `Quella delle ${hm(r.persa.dep)} ormai è persa 🏃` : '',
     ...(r.sopp||[]).map(c => `❌ La Cumana delle ${hm(c.dep)} è SOPPRESSA`)].filter(Boolean).join(' · ');
   $('a1x').textContent = r.poi.length ? 'Poi: ' + r.poi.map(x=>hm(x.dep)).join(' · ') : '';
   $('a2tag').hidden = !r.stima;
-  if (r.l2){
+  if (!P.linea2){
+    $('gW').textContent = hm(r.c.arr + ML);
+    $('gWs').textContent = `${D(domani)}arrivo a Montesanto alle ${hm(r.c.arr)}` + (ML ? ` e ${ML} min a piedi` : '');
+  } else if (r.l2){
     $('a2t').textContent = (r.stima?'~':'') + hm(r.l2.dep); setIn($('a2i'), r.l2.dep - n);
     $('a2n').textContent = r.stima
       ? `Orario ${TIPO_LBL[r.tipo]} non disponibile: conto un treno ogni ${r.hw} min con l'attesa peggiore.`
@@ -170,23 +201,25 @@ function renderTurni(now){
 function renderRitorno(now, day){
   const {r, now:n, domani} = conDomani(ritorno, now, day);
   if (!r){ ['r1t','r2t','gR'].forEach(i=>$(i).textContent='--:--'); return; }
+  if (r.l2){
   $('r2tag').hidden = !r.stima;
   $('r2t').textContent = (r.stima?'~':'') + hm(r.l2.g); setIn($('r2i'), r.l2.g - n);
   $('r2n').textContent = (domani ? '🌙 Stasera non ci sono più coincidenze: ecco la prima di domani. ' : `Uscendo dal lavoro adesso (${W} min a piedi). `)
     + (r.stima ? `Orario ${TIPO_LBL[r.tipo]} non disponibile: conto l'attesa peggiore (un treno ogni ${r.hw} min).` : `Arrivo a Montesanto alle ${hm(r.l2.ms)}`);
   $('r2x').textContent = r.altri.length ? 'Poi: ' + r.altri.map(x=>hm(x.g)).join(' · ') : '';
   $('r2vt').innerHTML = vtBtn(r.l2.n); curL2.ritorno = r.l2.n;
+  }
   $('r1t').textContent = hm(r.cum.dep); setIn($('r1i'), r.cum.dep - n);
   badge($('r1i'), domani ? null : liveRit('montesanto_p', r.cum.dep));
-  $('r1n').textContent = `Arrivo a La Trencia alle ${hm(r.cum.arr)}` + ((r.sopp||[]).length ? ` · ❌ ${r.sopp.map(c=>hm(c.dep)).join(', ')} SOPPRESSA` : '');
+  $('r1n').textContent = (r.l2 ? '' : (domani ? '🌙 Stasera non ci sono più Cumane: ecco la prima di domani. ' : (ML ? `Uscendo dal lavoro adesso (${ML} min a piedi). ` : ''))) + `Arrivo a ${STAZ.nome} alle ${hm(r.cum.arr)}` + ((r.sopp||[]).length ? ` · ❌ ${r.sopp.map(c=>hm(c.dep)).join(', ')} SOPPRESSA` : '');
   $('r1x').textContent = r.poi.length ? 'Poi: ' + r.poi.map(x=>hm(x.dep)).join(' · ') : '';
-  const v = (r.stima || domani) ? null : voloCumana(r.l2.ms, r.cum.dep);
+  const v = (!r.l2 || r.stima || domani) ? null : voloCumana(r.l2.ms, r.cum.dep);
   $('r1v').hidden = !v; if (v) $('r1v').innerHTML = voloTxt(v, 'Cumana', `a casa ${hm(v.casa)}`);
   const dx = r.esci - n;
   $('gL').textContent = dx<=0 ? 'adesso!' : dx<60 ? `tra ${dx} min` : (domani?'domani ':'') + hm(r.esci);
   $('gLs').textContent = `${domani?'Domani e':'E'}ntro le ${hm(r.esci)}, per la Cumana delle ${hm(r.cum.dep)}`;
   $('gR').textContent = hm(r.casa);
-  $('gRs').textContent = `${D(domani)}con ${C} min a piedi da La Trencia`;
+  $('gRs').textContent = `${D(domani)}con ${C} min a piedi da ${STAZ.nome}`;
 }
 
 // ---------------- Ritardi EAV in tempo (quasi) reale ----------------
@@ -203,7 +236,7 @@ function soppressa(lista, m){ const r = liveRit(lista, m); return !!(r && SOPP.t
 // Cerca il ritardo di una Cumana nel tabellone EAV usando il NUMERO del treno (non l'orario):
 // "m" è l'orario in minuti della Cumana nei nostri dati, da cui ricavo il suo numero
 const PER_NUMERO = {
-  trencia_p:    m => O.cumanaAndata.find(c => c.dep === m),    // partenze da La Trencia
+  [LP]:         m => O.cumanaAndata.find(c => c.dep === m),    // partenze dalla mia stazione (La Trencia o Pianura)
   montesanto_a: m => O.cumanaAndata.find(c => c.arr === m),    // arrivi a Montesanto
   montesanto_p: m => O.cumanaRitorno.find(c => c.dep === m)    // partenze da Montesanto
 };
@@ -283,10 +316,13 @@ async function chiediAggiornamentoVero(){
   liveStato('⚠️ GitHub non ha risposto, riprova con 🔄');
 }
 $('liveagg').addEventListener('click', chiediAggiornamento);
+// Il pulsante 🔄 si vede solo a chi ha la chiave GitHub; la chiave si inserisce da ⚙️ Impostazioni
+$('liveagg').hidden = !getTok();
+$('iChiave').addEventListener('click', () => { $('tokbox').hidden = false; $('tok').focus(); });
 $('toksave').addEventListener('click', () => {
   const v = $('tok').value.trim(); if (!v) return;
   try { localStorage.setItem('ghtok', v); } catch(e){}
-  $('tok').value = ''; $('tokbox').hidden = true; chiediAggiornamento();
+  $('tok').value = ''; $('tokbox').hidden = true; $('liveagg').hidden = false; chiediAggiornamento();
 });
 
 // ---------------- Ritardo Linea 2: copia il numero e apre ViaggiaTreno ----------------
@@ -363,30 +399,32 @@ function renderCorso(now, day){
 
   // ===== ANDATA IN CORSO =====
   // 0) Sono a La Trencia: prossima Cumana da adesso (niente camminata da casa)
-  const cT = O.cumanaAndata.filter(c => c.dep >= now && !soppressa('trencia_p', c.dep));
+  const cT = O.cumanaAndata.filter(c => c.dep >= now && !soppressa(LP, c.dep));
   if (cT.length){
-    const c = cT[0], lr = liveRit('trencia_p', c.dep), rit = lr ? lr.rit : 0;
+    const c = cT[0], lr = liveRit(LP, c.dep), rit = lr ? lr.rit : 0;
     const k = catenaAndata({dep:c.dep, arr:c.arr + rit}, t);
     $('acT').innerHTML = `<div class="row"><span>Prossima Cumana</span><span class="tt">${hm(c.dep)}</span>${ritTxt(lr)}<span>${txtTra(c.dep + rit - now)}</span></div>
-      <span>Arrivo a Montesanto alle <b>${hm(c.arr + rit)}</b></span>` + (k.l2
+      <span>Arrivo a Montesanto alle <b>${hm(c.arr + rit)}</b></span>` + (!P.linea2
+      ? (ML ? `<span>Al lavoro alle <b>${hm(c.arr + rit + ML)}</b></span>` : '') : k.l2
       ? `<span>Prendi la Linea 2 delle <b>${hm(k.l2.dep)}</b> · al lavoro alle <b>${hm(k.l2.lav)}</b></span>` : '')
       + (cT[1] ? `<span class="soft">Poi: ${cT.slice(1,4).map(x=>hm(x.dep)).join(' · ')}</span>` : '');
-  } else $('acT').innerHTML = nessuno('Niente più Cumane da La Trencia oggi: la prima di domani è alle 06:00.');
+  } else $('acT').innerHTML = nessuno(`Niente più Cumane da ${STAZ.nome} oggi: la prima di domani è alle ${hm(O.cumanaAndata[0].dep)}.`);
 
-  // 1) Sulla Cumana: partite da La Trencia negli ultimi 40 minuti
+  // 1) Sulla Cumana: partite dalla mia stazione negli ultimi 40 minuti
   const cA = O.cumanaAndata.filter(c => c.dep <= now && c.dep >= now - 40).reverse()
     .map(c => ({k:c.dep, lbl:hm(c.dep), c}));
   let sel = chips('acC', cA, now);
   if (sel){
     const c = sel.c, lr = liveRit('montesanto_a', c.arr), arr = c.arr + (lr ? lr.rit : 0);
     const l = l2Andata(arr + X, t);
-    $('acCr').innerHTML = `<span>Arrivo a Montesanto alle <b>${hm(arr)}</b>${ritTxt(lr)}</span>` + (l
+    $('acCr').innerHTML = `<span>Arrivo a Montesanto alle <b>${hm(arr)}</b>${ritTxt(lr)}</span>` + (!P.linea2
+      ? `<div class="row"><span>Al lavoro alle</span><span class="tt">${hm(arr + ML)}</span></div>` : l
       ? `<div class="row"><span>Prendi la Linea 2 delle</span><span class="tt">${hm(l.treni[0].dep)}</span></div>
          <span>Al lavoro alle <b>${hm(l.treni[0].lav)}</b></span>
          ${l.treni.length>1 ? `<span class="soft">Se perdi quella: ${l.treni.slice(1,4).map(x=>hm(x.dep)).join(' · ')}</span>` : ''}
          ${(v => v ? `<span class="volo">${voloTxt(v, 'Linea 2', `al lavoro ${hm(v.lav)}`)}</span>` : '')(l.stima ? null : voloL2(arr, l.treni[0].dep, t))}`
       : nessuno('Linea 2 già chiusa.'));
-  } else $('acCr').innerHTML = nessuno('Nessuna Cumana partita da La Trencia negli ultimi 40 minuti.');
+  } else $('acCr').innerHTML = nessuno(`Nessuna Cumana partita da ${STAZ.nome} negli ultimi 40 minuti.`);
 
   // 2) A Montesanto: prossime Linea 2 (3 min per arrivare al binario)
   const lm = l2Andata(now + 3, t);
@@ -453,7 +491,7 @@ function renderCorso(now, day){
   sel = chips('rcC', cR, now);
   if (sel){
     const lr = liveRit('montesanto_p', sel.c.dep), rit = lr ? lr.rit : 0;
-    $('rcCr').innerHTML = `<span>Arrivo a La Trencia alle <b>${hm(sel.c.arr + rit)}</b>${ritTxt(lr)}</span>
+    $('rcCr').innerHTML = `<span>Arrivo a ${STAZ.nome} alle <b>${hm(sel.c.arr + rit)}</b>${ritTxt(lr)}</span>
       <div class="row"><span>A casa alle</span><span class="tt">${hm(sel.c.arr + rit + C)}</span></div>`;
   } else $('rcCr').innerHTML = nessuno('Nessuna Cumana partita da Montesanto negli ultimi 30 minuti.');
 }
@@ -542,9 +580,65 @@ window.scrollTo(0,0); setTimeout(() => window.scrollTo(0,0), 50);   // il #tab n
 
 // ---------------- Footer dai dati (si aggiorna da solo) ----------------
 $('foot').textContent = `Orari controllati il ${O.controllati}. Cumana: PDF EAV, un treno ogni 24 minuti (stesso orario tutti i giorni). `
-  + `Linea 2: simulazioni Trenitalia; dove mancano, stima prudente. Margini: ${C} min casa↔La Trencia, ${X} min di cambio a Montesanto, `
-  + `${G} min Montesanto↔Garibaldi, ${W} min Garibaldi↔lavoro. Festivi infrasettimanali trattati come domenica. `
-  + (O.turni.some(t=>t.auto) ? `Turno di ${O.turni.filter(t=>t.auto).map(t=>t.nome).join(', ')} in auto 🚗: non lo considero.` : '');
+  + (P.linea2
+    ? `Linea 2: simulazioni Trenitalia; dove mancano, stima prudente. Margini: ${C} min casa↔${STAZ.nome}, ${X} min di cambio a Montesanto, `
+      + `${G} min Montesanto↔Garibaldi, ${W} min Garibaldi↔lavoro. `
+    : `Margini: ${C} min casa↔${STAZ.nome}` + (ML ? `, ${ML} min Montesanto↔lavoro. ` : '. '))
+  + `Festivi infrasettimanali trattati come domenica. `
+  + (P.turni && P.linea2 && O.turni.some(t=>t.auto) ? `Turno di ${O.turni.filter(t=>t.auto).map(t=>t.nome).join(', ')} in auto 🚗: non lo considero.` : '');
+
+// ---------------- Nomi, link e mappa in base alle impostazioni ----------------
+document.querySelectorAll('.nstaz').forEach(e => e.textContent = STAZ.nome);
+$('dest').textContent = P.linea2 ? 'Garibaldi' : 'Montesanto';
+document.querySelectorAll('a.lvstaz').forEach(a => a.href = `https://orariotreni.eavsrl.it/teleindicatori/?stazione=${STAZ.eav}&tipo=${a.dataset.tipo}`);
+(function disegnaMappa(){
+  const ferm = ['La Trencia', 'Rione Traiano', 'Soccavo', 'Piave'];
+  if (P.stazione === 'pianura') ferm.unshift('Pianura');
+  const li = (cls, testo, nota) => `<li class="stop ${cls}"><span class="dot"></span>${testo}${nota ? `<small>${nota}</small>` : ''}</li>`;
+  let h = li('piedi', '<b>🏠 Casa</b>', `${C} min a piedi`);
+  ferm.forEach((f, i) => h += li(f === STAZ.nome ? 'cf grande' : 'cf', f === STAZ.nome ? `<b>${f}</b>` : f,
+    f === STAZ.nome ? 'Circumflegrea · una ogni 24 min' : (i === ferm.length - 1 ? `${O.cumanaAndata[0].arr - O.cumanaAndata[0].dep} min da ${STAZ.nome}` : '')));
+  if (P.linea2){
+    h += li('cambio grande', '<b>Montesanto</b>', `cambio: ${X} min · binario per Licola sul tabellone`)
+       + li('l2', 'Piazza Cavour')
+       + li('l2 grande', '<b>Piazza Garibaldi</b>', `Linea 2 · ${O.treniGaribaldiMontesanto} min di treno + ${O.binario} per il binario`)
+       + li('fine', '<b>🏢 Lavoro</b>', `${W} min a piedi`);
+  } else {
+    h += ML ? li('cf grande', '<b>Montesanto</b>') + li('fine', '<b>🏢 Lavoro</b>', `${ML} min a piedi`)
+            : li('cf grande', '<b>Montesanto</b>', 'fine del viaggio');
+  }
+  $('mappa').innerHTML = h;
+})();
+
+// ---------------- Menu ⚙️ Impostazioni ----------------
+(function(){
+  const f = $('impform');
+  Object.entries(O.stazioni).forEach(([k, s]) => { const o = document.createElement('option'); o.value = k; o.textContent = s.nome; $('iStaz').appendChild(o); });
+  const mostra = () => {
+    const l2 = $('iL2').checked;
+    $('iLavLbl').textContent = l2 ? 'Minuti a piedi da Garibaldi al lavoro' : 'Minuti a piedi da Montesanto al lavoro (0 se arrivi lì)';
+    $('iTurLbl').hidden = !l2;
+  };
+  const riempi = Q => {
+    $('iStaz').value = Q.stazione; $('iCasa').value = Q.casa; $('iL2').checked = !!Q.linea2;
+    $('iLav').value = Q.linea2 ? Q.lavoro : Q.montesantoLavoro; $('iTur').checked = !!Q.turni; mostra();
+  };
+  riempi(P);
+  $('iL2').addEventListener('change', () => { $('iLav').value = $('iL2').checked ? P.lavoro : P.montesantoLavoro; mostra(); });
+  const num = (v, d) => { const n = Math.round(+v); return isFinite(n) && n >= 0 && n <= 60 ? n : d; };
+  f.addEventListener('submit', e => {
+    e.preventDefault();
+    const l2 = $('iL2').checked, nuovo = {
+      stazione: $('iStaz').value, casa: num($('iCasa').value, P.casa), linea2: l2,
+      lavoro: l2 ? num($('iLav').value, P.lavoro) : P.lavoro,
+      montesantoLavoro: l2 ? P.montesantoLavoro : num($('iLav').value, 0),
+      turni: $('iTur').checked
+    };
+    try { localStorage.setItem('profilo', JSON.stringify(nuovo)); } catch(err){}
+    location.reload();
+  });
+  $('iReset').addEventListener('click', () => { riempi(O.profiloBase); });
+})();
 
 render(true);
 setInterval(render, 1000);

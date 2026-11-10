@@ -15,7 +15,7 @@ const aperte = [];
 after(() => aperte.forEach(w => w.close()));   // chiudo sempre tutte le pagine finte, anche se un test fallisce
 
 // Apre l'app con l'orologio fermo a `quando` (ora UTC) e, se serve, con i ritardi EAV finti `live`
-async function apri(quando, { live = null, hash = '#andata', chiave = null } = {}) {
+async function apri(quando, { live = null, hash = '#andata', chiave = null, profilo = null } = {}) {
   const errori = [];
   const vc = new VirtualConsole();
   vc.on('jsdomError', e => errori.push(e.message));
@@ -28,6 +28,7 @@ async function apri(quando, { live = null, hash = '#andata', chiave = null } = {
   w.scrollTo = () => {};                               // jsdom non sa scorrere la pagina
   const chiamate = [];
   if (chiave) w.localStorage.setItem('ghtok', chiave);
+  if (profilo) w.localStorage.setItem('profilo', JSON.stringify(profilo));
   w.fetch = async (url, opt = {}) => { chiamate.push({ url: String(url), metodo: opt.method || 'GET' });
     if (opt.method === 'POST') return { ok: true, status: 204 };
     return live ? { ok: true, status: 200, json: async () => live } : { ok: false, status: 404 }; };
@@ -188,6 +189,49 @@ test('Mappa del viaggio: c\'è, con le fermate giuste e il numero 5164 alle 16:2
   const w = {}; new Function('window', DATA)(w);
   assert.equal(w.ORARI.cumanaRitorno.find(c => c.dep === 984).n, 5164);   // tabellone di Montesanto 5/11 ore 16:08
   assert.equal(w.ORARI.cumanaRitorno.find(c => c.dep === 1008).n, 5168);
+});
+
+// ---------------- PROFILO DI SABRINA: Pianura, 12 minuti, niente Linea 2 ----------------
+const SABRINA = { stazione: 'pianura', casa: 12, linea2: false, montesantoLavoro: 0, turni: false };
+
+test('Sabrina, andata alle 08:00: Cumana da Pianura 08:22, esce tra 10 min, a Montesanto 08:39', async () => {
+  const a = await apri('2026-11-05T07:00:00Z', { profilo: SABRINA });
+  assert.equal(a.testo('a1t'), '08:22');                 // La Trencia 08:24 - 2 minuti
+  assert.equal(a.testo('gA'), 'tra 10 min');             // 08:22 - 12 min a piedi
+  assert.equal(a.testo('gW'), '08:39');                  // arrivo a Montesanto
+  const b = a.w.document.body;
+  assert.ok(b.classList.contains('no-l2') && b.classList.contains('no-turni'));
+  assert.equal(a.testo('dest'), 'Montesanto');
+  assert.match(a.w.document.querySelector('a.lvstaz').href, /stazione=824/);
+  assert.deepEqual(a.errori, []);
+});
+
+test('Sabrina, uscita alle 17:00: Cumana da Montesanto 17:12, a Pianura 17:32, a casa 17:44', async () => {
+  const a = await apri('2026-11-05T16:00:00Z', { profilo: SABRINA, hash: '#ritorno' });
+  assert.equal(a.testo('r1t'), '17:12');
+  assert.match(a.testo('r1n'), /Arrivo a Pianura alle 17:32/);   // La Trencia 17:27 + 5 minuti
+  assert.equal(a.testo('gR'), '17:44');
+  assert.equal(a.testo('gL'), 'tra 12 min');
+});
+
+test('Sabrina: la prima da Montesanto (05:02) arriva a Pianura alle 05:18, le altre 5 min dopo La Trencia', async () => {
+  const a = await apri('2026-11-05T07:00:00Z', { profilo: SABRINA });
+  const R = a.w.ORARI.cumanaRitorno;
+  assert.equal(R[0].arr, 318);                           // 05:18 come sul PDF EAV
+  assert.equal(R[1].arr, 356);                           // 05:56
+});
+
+test('Sabrina: Cumana soppressa sul tabellone di Pianura, la salta', async () => {
+  const a = await apri('2026-11-05T07:00:00Z', { profilo: SABRINA, live: liveFinto({ pianura_p: [{ treno: '5079', dest: 'MONTESANTO', ora: '08:22', rit: 0, info: 'SOPPRESSO' }] }) });
+  assert.equal(a.testo('a1t'), '08:46');
+  assert.match(a.testo('a1l'), /08:22 è SOPPRESSA/);
+});
+
+test('Pulsante 🔄: nascosto a chi non ha la chiave GitHub (come Sabrina), visibile con la chiave', async () => {
+  const senza = await apri('2026-11-05T07:00:00Z', { profilo: SABRINA });
+  assert.equal(senza.w.document.getElementById('liveagg').hidden, true);
+  const con = await apri('2026-11-05T07:00:00Z', { chiave: 'x' });
+  assert.equal(con.w.document.getElementById('liveagg').hidden, false);
 });
 
 // ---------------- COERENZA DEI FILE ----------------
